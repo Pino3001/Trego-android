@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "360954493024",
+    "project_id": "trego-615dc",
+    "storage_bucket": "trego-615dc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:360954493024:android:38a9a287c165ec1766ab05",
+        "android_client_info": {
+          "package_name": "com.grupo6.trego"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "360954493024-vv04ki66e6l5i952jl4hb0hrjhd7i559.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.grupo6.trego",
+            "certificate_hash": "d94116c50802c57e0bab6b7721a09afa090bcfe7"
+          }
+        },
+        {
+          "client_id": "360954493024-4l2rn17bngm5rjhdnrpnh10u6jbdel0i.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfzIGR-Lh7yXl1qjU45t5LMqVobFmnhGA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "360954493024-4l2rn17bngm5rjhdnrpnh10u6jbdel0i.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
