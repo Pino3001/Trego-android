@@ -49,7 +49,7 @@ fun FormInicio(onLoginSuccess: () -> Unit) {
 // Variable de estado que controla si el proceso está en curso (sirve para mostrar un indicador de carga)
     var isLoading by remember { mutableStateOf(false) }
 
-    fun registrarUsuario() {
+    fun registrarUsuarioGoogle() {
         // Evita que el usuario dispare múltiples veces el proceso si ya está cargando
         if (!isLoading) {
             isLoading = true
@@ -163,7 +163,7 @@ fun FormInicio(onLoginSuccess: () -> Unit) {
             text = if (isLoading) "Cargando..." else "Iniciar con Google",
             iconRes = R.drawable.brand_google,
             onClick = {
-                registrarUsuario()
+                registrarUsuarioGoogle()
             }
         )
 
