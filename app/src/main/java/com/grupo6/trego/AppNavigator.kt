@@ -6,6 +6,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
+import com.grupo6.trego.ui.auth.PhoneAuthScreen
 import com.grupo6.trego.ui.componentes.FormInicio
 import com.grupo6.trego.ui.componentes.PerfilScreen
 
@@ -33,6 +34,10 @@ fun AppNavigation() {
                         // en lugar de volver al formulario de inicio.
                         popUpTo("login") { inclusive = true }
                     }
+                },
+                onNavigateToPhone = {
+                    // ✨ 3. AQUÍ ES DONDE NAVEGAS DE VERDAD
+                    navController.navigate("phone_auth")
                 }
             )
         }
@@ -47,6 +52,14 @@ fun AppNavigation() {
                     popUpTo("profile") { inclusive = true }
                 }
             })
+        }
+
+        composable("phone_auth") {
+            PhoneAuthScreen(
+                onAuthSuccess = {
+                    navController.navigate("home_screen")
+                }
+            )
         }
     }
 }

@@ -36,7 +36,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 @Composable
-fun FormInicio(onLoginSuccess: () -> Unit) {
+fun FormInicio(onLoginSuccess: () -> Unit, onNavigateToPhone: () -> Unit) {
 // Obtiene el Contexto de Android necesario para funciones del sistema (como diálogos)
     val context = LocalContext.current
 
@@ -172,7 +172,7 @@ fun FormInicio(onLoginSuccess: () -> Unit) {
         BotonInicio(
             text = "Iniciar con el celular",
             iconRes = R.drawable.device_mobile,
-            onClick = { /* Lógica de Firebase o Google Auth */ }
+            onClick = {  onNavigateToPhone()  }
         )
 
         Spacer(modifier = Modifier.height(36.dp))

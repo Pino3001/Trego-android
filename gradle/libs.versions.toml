@@ -16,6 +16,7 @@ credentials = "1.2.2"
 googleid = "1.1.1"
 navigationCompose = "2.8.3"
 coilCompose = "2.6.0"
+retrofit = "2.11.0"
 
 [libraries]
 # --- Core y Test ---
@@ -51,6 +52,9 @@ googleid = { group = "com.google.android.libraries.identity.googleid", name = "g
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coilCompose" }
 kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesPlayServices" }
+
+retrofit-core = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

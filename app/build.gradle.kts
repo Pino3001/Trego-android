@@ -71,5 +71,8 @@ dependencies {
 
     // Credential Manager
     implementation(libs.androidx.credentials.play.services)
+    // Retrofit + Gson Converter
+    implementation(libs.retrofit.core)
+    implementation(libs.retrofit.converter.gson)
 
 }
