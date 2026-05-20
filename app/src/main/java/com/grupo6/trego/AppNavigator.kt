@@ -1,54 +1,57 @@
 package com.grupo6.trego
 
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.grupo6.trego.ui.auth.PhoneAuthScreen
-import com.grupo6.trego.ui.componentes.FormInicio
-import com.grupo6.trego.ui.componentes.PerfilScreen
+import com.grupo6.trego.ui.auth.FormInicio
+import com.grupo6.trego.ui.auth.PhoneAuthViewModel
+import com.grupo6.trego.ui.carrito.CarritoScreen
+import com.grupo6.trego.ui.menu.MenuScreen
+import com.grupo6.trego.ui.tabs.PerfilScreen
+import com.grupo6.trego.ui.restaurantes.RestaurantListScreen
 
 @Composable
 fun AppNavigation() {
-    // Crea y recuerda el controlador que gestiona el historial de pantallas
     val navController = rememberNavController()
-    // Accede a Firebase para verificar el estado de la sesión actual
     val auth = Firebase.auth
 
-    // Determina la pantalla de inicio: si Firebase ya tiene un usuario, va directo a "profile".
-    // Si no hay nadie logueado (null), lo envía a "login".
-    val startDestination = if (auth.currentUser != null) "profile" else "login"
+    // 🔄 1. CAMBIADO: Si el usuario ya está logueado, ahora va a "restaurants" en vez de "profile"
+    val startDestination = if (auth.currentUser != null) "restaurants" else "login"
 
     NavHost(navController = navController, startDestination = startDestination) {
         // Ruta del Login
         composable("login") {
-            // Le pasamos al FormInicio una función para que sepa navegar al tener éxito
+            // 1. Obtenemos la instancia del ViewModel para la pantalla de inicio
+            val authViewModel: PhoneAuthViewModel = viewModel()
+
             FormInicio(
                 onLoginSuccess = {
-                    // Acción al loguearse con éxito:
-                    navController.navigate("profile") {
-                        // "Limpieza de historial": Borra la pantalla de login del stack
-                        // 'inclusive = true' hace que si el usuario pulsa "atrás", la app se cierre
-                        // en lugar de volver al formulario de inicio.
+                    // 🔄 Al loguearse con éxito, navega a la lista de restaurantes
+                    navController.navigate("restaurants") {
+                        // Borra la pantalla de login del stack para que no se pueda volver atrás
                         popUpTo("login") { inclusive = true }
                     }
                 },
                 onNavigateToPhone = {
-                    // ✨ 3. AQUÍ ES DONDE NAVEGAS DE VERDAD
                     navController.navigate("phone_auth")
-                }
+                },
+                viewModel = authViewModel
             )
         }
 
-        // Ruta del Perfil --- cambiar por la pagina de inicio o modificar perfil
+        // Ruta del Perfil (Sigue existiendo por si navegas a ella desde un menú o botón)
         composable("profile") {
-            PerfilScreen(onLogout = {
-                // Acción al cerrar sesión:
+            PerfilScreen(
+                navController = navController,
+                onLogout = {
                 navController.navigate("login") {
-                    // "Limpieza de historial": Borra la pantalla de perfil del stack
-                    // para que no se pueda volver a ver los datos después de salir.
                     popUpTo("profile") { inclusive = true }
                 }
             })
@@ -57,9 +60,37 @@ fun AppNavigation() {
         composable("phone_auth") {
             PhoneAuthScreen(
                 onAuthSuccess = {
-                    navController.navigate("home_screen")
+                    // 💡 Si el login por teléfono también debe ir a restaurantes, cámbialo aquí:
+                    navController.navigate("restaurants") {
+                        popUpTo("login") { inclusive = true }
+                    }
                 }
             )
+        }
+
+        // Ruta de Restaurantes (Ahora es el Home de la app)
+        composable("restaurants") {
+            RestaurantListScreen(
+                navController = navController,
+                onRestaurantClick = { id ->
+                    navController.navigate("menu/$id")
+                }
+            )
+        }
+
+        composable(
+            route = "menu/{restauranteId}",
+            arguments = listOf(navArgument("restauranteId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val restauranteId = backStackEntry.arguments?.getLong("restauranteId") ?: 0L
+            MenuScreen(
+                restauranteId = restauranteId,
+                navController = navController
+            )
+        }
+
+        composable("carrito") {
+            CarritoScreen(navController = navController)
         }
     }
 }

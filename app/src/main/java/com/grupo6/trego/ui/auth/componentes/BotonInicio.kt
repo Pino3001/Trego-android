@@ -1,4 +1,4 @@
-package com.grupo6.trego.ui.componentes
+package com.grupo6.trego.ui.auth.componentes
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image

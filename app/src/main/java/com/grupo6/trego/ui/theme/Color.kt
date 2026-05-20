@@ -4,7 +4,8 @@ import androidx.compose.ui.graphics.Color
 
 val TregoOrange = Color(0xFFFF6600)
 val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+val TregoSecondary = Color(0xFF274480)
+val PrecioColor = Color(0xFF851414)
 
 val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)

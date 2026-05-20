@@ -61,11 +61,12 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
     // Navegación
     implementation(libs.androidx.navigation.compose)
 
-    // Carga de imágenes (Foto de perfil)
-    implementation(libs.coil.compose)
     // Firebase (Auth + Messaging)
     implementation(libs.firebase.messaging) // PARA LAS PUSH
 
@@ -74,5 +75,16 @@ dependencies {
     // Retrofit + Gson Converter
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.gson)
+    // Imágenes
+    implementation(libs.coil.compose)
+
+    // Permisos en Compose
+    implementation(libs.accompanist.permissions)
+
+    // Ubicación GPS
+    implementation(libs.play.services.location)
+
+    // iconos
+    implementation(libs.compose.material.icons.extended)
 
 }

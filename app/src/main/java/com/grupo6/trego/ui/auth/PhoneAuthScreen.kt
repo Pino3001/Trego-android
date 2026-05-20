@@ -57,6 +57,7 @@ fun PhoneAuthScreen(
     viewModel: PhoneAuthViewModel = viewModel(),
     onAuthSuccess: () -> Unit
 ) {
+    val context = LocalContext.current
     val auth = remember { FirebaseAuth.getInstance() }
     val activity = LocalContext.current as Activity
 
@@ -67,8 +68,19 @@ fun PhoneAuthScreen(
                 auth.signInWithCredential(credential)
                     .addOnSuccessListener { result ->
                         result.user?.getIdToken(false)?.addOnSuccessListener { tokenResult ->
-                            val token = tokenResult.token ?: return@addOnSuccessListener
-                            viewModel.sendTokenToBackend(token) { onAuthSuccess() }
+                            val firebaseToken = tokenResult.token ?: return@addOnSuccessListener
+
+                            // 🚀 ACTUALIZADO: Agregamos el onError para manejar la caída del backend
+                            viewModel.sendSMSTokenToBackend(
+                                context = context,
+                                firebaseToken = firebaseToken,
+                                onSuccess = { onAuthSuccess() },
+                                onError = {
+                                    // Si el backend está apagado, cerramos sesión en Firebase
+                                    // para no quedar trabados en el inicio automático
+                                    auth.signOut()
+                                }
+                            )
                         }
                     }
                     .addOnFailureListener { viewModel.onVerificationFailed(it.message) }
@@ -83,6 +95,7 @@ fun PhoneAuthScreen(
             }
         }
     }
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center // <-- Esto hace la magia del centrado
@@ -118,7 +131,11 @@ fun PhoneAuthScreen(
                 ) { targetStep ->
                     when (targetStep) {
                         AuthStep.PHONE -> PhoneStep(viewModel, auth, activity, callbacks)
-                        AuthStep.VERIFY -> VerifyStep(viewModel, auth) { onAuthSuccess() }
+                        AuthStep.VERIFY -> VerifyStep(
+                            viewModel,
+                            auth,
+                            onAuthSuccess
+                        ) // 👈 Limpio y directo
                     }
                 }
 
@@ -250,8 +267,10 @@ private fun PhoneStep(
 private fun VerifyStep(
     viewModel: PhoneAuthViewModel,
     auth: FirebaseAuth,
-    onAuthSuccess: () -> Unit
+    onAuthSuccess: () -> Unit,
 ) {
+    val context = LocalContext.current
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Verificar código", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
         Text("Código enviado a", fontSize = 13.sp, color = Color.Gray)
@@ -271,18 +290,11 @@ private fun VerifyStep(
 
         Button(
             onClick = {
-                viewModel.isLoading = true
-                viewModel.setError(null)
-                val credential =
-                    PhoneAuthProvider.getCredential(viewModel.verificationId, viewModel.otpCode)
-                auth.signInWithCredential(credential)
-                    .addOnSuccessListener { result ->
-                        result.user?.getIdToken(false)?.addOnSuccessListener { tokenResult ->
-                            val token = tokenResult.token ?: return@addOnSuccessListener
-                            viewModel.sendTokenToBackend(token) { onAuthSuccess() }
-                        }
-                    }
-                    .addOnFailureListener { viewModel.onVerificationFailed(it.message) }
+                viewModel.verificarCodigoManual(
+                    context = context,
+                    auth = auth,
+                    onSuccess = onAuthSuccess
+                )
             },
             enabled = viewModel.otpCode.length == 6 && !viewModel.isLoading,
             modifier = Modifier
