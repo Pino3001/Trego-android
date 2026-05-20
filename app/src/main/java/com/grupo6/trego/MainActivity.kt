@@ -17,12 +17,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import com.google.firebase.messaging.FirebaseMessaging
 import com.grupo6.trego.AppNavigation
+import com.grupo6.trego.data.remote.RetrofitClient
 import com.grupo6.trego.ui.theme.TregoTheme
 
 class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        RetrofitClient.init(this)
         enableEdgeToEdge()
         // Pedir permiso
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

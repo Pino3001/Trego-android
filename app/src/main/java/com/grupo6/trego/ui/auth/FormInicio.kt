@@ -1,5 +1,6 @@
-package com.grupo6.trego.ui.componentes
+package com.grupo6.trego.ui.auth
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,11 +33,16 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import com.grupo6.trego.R
+import com.grupo6.trego.ui.auth.componentes.BotonInicio
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 @Composable
-fun FormInicio(onLoginSuccess: () -> Unit) {
+fun FormInicio(
+    onLoginSuccess: () -> Unit,
+    onNavigateToPhone: () -> Unit,
+    viewModel: PhoneAuthViewModel
+) {
 // Obtiene el Contexto de Android necesario para funciones del sistema (como diálogos)
     val context = LocalContext.current
 
@@ -50,51 +56,74 @@ fun FormInicio(onLoginSuccess: () -> Unit) {
     var isLoading by remember { mutableStateOf(false) }
 
     fun registrarUsuarioGoogle() {
-        // Evita que el usuario dispare múltiples veces el proceso si ya está cargando
+        val TAG = "GoogleAuthDebug" // 👈 Etiqueta para filtrar en el Logcat
+
         if (!isLoading) {
             isLoading = true
 
-            // Inicia el proceso en segundo plano
             scope.launch {
                 try {
-                    // Prepara la opción de inicio con Google usando tu ID de cliente del backend
                     val googleIdOption = GetGoogleIdOption.Builder()
-                        .setFilterByAuthorizedAccounts(false) // Permite elegir cualquier cuenta, no solo las ya autorizadas
-                        .setServerClientId("360954493024-4l2rn17bngm5rjhdnrpnh10u6jbdel0i.apps.googleusercontent.com") // El id proviente del archivo google-services.json
+                        .setFilterByAuthorizedAccounts(false)
+                        .setServerClientId("360954493024-4l2rn17bngm5rjhdnrpnh10u6jbdel0i.apps.googleusercontent.com")
                         .build()
 
-                    // Empaqueta la opción de Google en una petición general de credenciales
                     val request = GetCredentialRequest.Builder()
                         .addCredentialOption(googleIdOption)
                         .build()
 
-                    // --- INTERACCIÓN CON EL USUARIO ---
-                    // Muestra el selector nativo de cuentas de Google y espera a que el usuario elija una
+                    Log.d(TAG, "🟢 1. Abriendo el selector de CredentialManager...")
                     val result = credentialManager.getCredential(
                         context = context,
                         request = request
                     )
 
-                    // --- CONVERSIÓN DE CREDENCIALES ---
-                    // Convierte la respuesta del sistema en una credencial de ID de Google legible
-                    val googleCredential =
-                        GoogleIdTokenCredential.createFrom(result.credential.data)
+                    val googleCredential = GoogleIdTokenCredential.createFrom(result.credential.data)
 
-                    // Crea la credencial específica que Firebase entiende usando el Token de Google
-                    val firebaseCredential =
-                        GoogleAuthProvider.getCredential(googleCredential.idToken, null)
+                    // 🔍 LOG 1: Verificamos si Google nos dio su token inicial (IdToken)
+                    Log.d(TAG, "✅ 2. ¡Google obtuvo el Token con éxito!")
+                    Log.d(TAG, "   👉 Correo del usuario: ${googleCredential.id}")
+                    Log.d(TAG, "   👉 Google IdToken (primeros 30 caracteres): ${googleCredential.idToken.take(30)}...")
 
-                    // --- AUTENTICACIÓN FINAL ---
-                    // Envía la credencial a Firebase para iniciar sesión y espera la confirmación (.await())
+                    val firebaseCredential = GoogleAuthProvider.getCredential(googleCredential.idToken, null)
+
+                    Log.d(TAG, "🔄 3. Iniciando sesión en Firebase con la credencial de Google...")
                     val authResult = auth.signInWithCredential(firebaseCredential).await()
 
-                    // Si Firebase confirma que hay un usuario válido, ejecutamos la navegación
                     if (authResult.user != null) {
-                        onLoginSuccess() // Navegamos hacia la siguiente pagina
+                        val idTokenResult = authResult.user!!.getIdToken(false).await()
+                        val firebaseTokenString = idTokenResult.token
+
+                        if (firebaseTokenString != null) {
+
+                            // 🔍 LOG 2: Este es el token que viaja a tu backend
+                            Log.d(TAG, "🚀 4. ¡Token de Firebase generado listo para enviar al Backend!")
+                            Log.d(TAG, "   👉 Token Completo (Cópialo si lo necesitas para Postman):")
+                            Log.d(TAG, "   👉 $firebaseTokenString")
+
+                            viewModel.sendGoogleTokenToBackend(
+                                context = context,
+                                idToken = firebaseTokenString,
+                                onSuccess = {
+                                    Log.d(TAG, "🎉 5. El Backend respondió EXITOSAMENTE. Logueado.");
+                                    isLoading = false
+                                    onLoginSuccess()
+                                },
+                                onError = { mensajeError ->
+                                    Log.e(TAG, "❌ Fallo en la respuesta del Backend: $mensajeError")
+                                    isLoading = false
+                                    auth.signOut()
+                                }
+                            )
+                        } else {
+                            Log.e(TAG, "❌ El token string de Firebase vino nulo")
+                            isLoading = false
+                        }
                     }
 
                 } catch (e: Exception) {
-                    println("Error en Auth: ${e.message}")
+                    // 🔍 LOG 3: Si el selector de Google se cae o se cierra solo, saltará aquí
+                    Log.e(TAG, "❌ ERROR CRÍTICO en el proceso de Autenticación: ${e.message}", e)
                 } finally {
                     isLoading = false
                 }
@@ -172,7 +201,7 @@ fun FormInicio(onLoginSuccess: () -> Unit) {
         BotonInicio(
             text = "Iniciar con el celular",
             iconRes = R.drawable.device_mobile,
-            onClick = { /* Lógica de Firebase o Google Auth */ }
+            onClick = { onNavigateToPhone() }
         )
 
         Spacer(modifier = Modifier.height(36.dp))
