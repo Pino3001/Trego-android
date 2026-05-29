@@ -15,11 +15,11 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.grupo6.trego.data.model.ProductoDTO
+import com.grupo6.trego.data.model.DTOProducto
 import com.grupo6.trego.ui.theme.TregoOrange
 
 @Composable
-fun OfertaItem(producto: ProductoDTO) {
+fun OfertaItem(producto: DTOProducto) {
     Card(
         modifier = Modifier.width(180.dp),
         shape = RoundedCornerShape(12.dp),
@@ -28,7 +28,7 @@ fun OfertaItem(producto: ProductoDTO) {
         Box {
             Column {
                 AsyncImage(
-                    model = producto.imagenUrl ?: "https://via.placeholder.com/180x120",
+                    model = producto.urlImagen ?: "https://via.placeholder.com/180x120",
                     contentDescription = producto.nombre,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -36,12 +36,14 @@ fun OfertaItem(producto: ProductoDTO) {
                         .height(110.dp)
                 )
                 Column(modifier = Modifier.padding(8.dp)) {
-                    Text(
-                        text = producto.nombre,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1
-                    )
+                    producto.nombre?.let {
+                        Text(
+                            text = it,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
+                        )
+                    }
                     Spacer(Modifier.height(4.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -49,14 +51,14 @@ fun OfertaItem(producto: ProductoDTO) {
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(
-                            text = "${producto.precio.toInt()}$",
+                            text = "${producto.precio?.toInt()}$",
                             fontSize = 12.sp,
                             color = Color.Gray,
                             textDecoration = TextDecoration.LineThrough
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "${producto.precioOferta?.toInt()}$",
+                            text = "Precio oferta$",
                             fontSize = 13.sp,
                             color = TregoOrange,
                             fontWeight = FontWeight.Bold
@@ -66,7 +68,7 @@ fun OfertaItem(producto: ProductoDTO) {
             }
 
             // Badge descuento
-            producto.descuentoPorcentaje?.let {
+/*            producto.descuentoPorcentaje?.let {
                 Surface(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -82,7 +84,7 @@ fun OfertaItem(producto: ProductoDTO) {
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
-            }
+            }*/
         }
     }
 }

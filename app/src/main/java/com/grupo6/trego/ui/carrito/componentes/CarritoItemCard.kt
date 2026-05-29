@@ -16,12 +16,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.grupo6.trego.data.model.CarritoItem
+import com.grupo6.trego.data.model.DTOProductoPedido
 import com.grupo6.trego.ui.theme.TregoOrange
 
 @Composable
 fun CarritoItemCard(
-    item: CarritoItem,
+    item: DTOProductoPedido,
     onEditar: () -> Unit,
     onEliminar: () -> Unit,
     onCambiarCantidad: (Int) -> Unit
@@ -40,8 +40,8 @@ fun CarritoItemCard(
         ) {
             // Imagen
             AsyncImage(
-                model = item.producto.imagenUrl ?: "https://picsum.photos/seed/${item.producto.id}/200",
-                contentDescription = item.producto.nombre,
+                model = item.producto?.urlImagen ?: "https://picsum.photos/seed/${item.producto?.idProducto}/200",
+                contentDescription = item.producto?.nombre,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(70.dp)
@@ -57,31 +57,33 @@ fun CarritoItemCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        item.producto.nombre,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        modifier = Modifier.weight(1f)
-                    )
+                    item.producto?.nombre?.let {
+                        Text(
+                            it,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                     IconButton(onClick = onEditar, modifier = Modifier.size(28.dp)) {
                         Icon(Icons.Default.Edit, contentDescription = "Editar", tint = Color.Gray)
                     }
                 }
 
                 // Ingredientes quitados
-                if (item.ingredientesQuitados.isNotEmpty()) {
+                if (item.ingredientes?.isNotEmpty() == true) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.padding(top = 4.dp)
                     ) {
                         Text("Quitar:", fontSize = 11.sp, color = Color.Gray)
-                        item.ingredientesQuitados.forEach { ing ->
+                        item.ingredientes.forEach { ing ->
                             Surface(
                                 shape = RoundedCornerShape(50),
                                 color = TregoOrange
                             ) {
                                 Text(
-                                    ing,
+                                    text = ing.nombre,
                                     fontSize = 10.sp,
                                     color = Color.White,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -92,9 +94,9 @@ fun CarritoItemCard(
                 }
 
                 // Comentario
-                if (item.comentario.isNotBlank()) {
+                if (item.observaciones?.isNotBlank() == true) {
                     Text(
-                        "\"${item.comentario}\"",
+                        "\"${item.observaciones}\"",
                         fontSize = 11.sp,
                         color = Color.Gray,
                         modifier = Modifier.padding(top = 2.dp)
@@ -134,7 +136,7 @@ fun CarritoItemCard(
                     // Eliminar + total
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "Total: ${item.subtotal.toInt()}$",
+                            "Total: ${item.subtotal?.toInt()}$",
                             fontWeight = FontWeight.SemiBold,
                             color = TregoOrange,
                             fontSize = 13.sp

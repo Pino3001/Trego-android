@@ -1,7 +1,10 @@
 package com.grupo6.trego.data.repository
 
-import com.grupo6.trego.data.model.DireccionDTO
-import com.grupo6.trego.data.model.RestaurantDTO
+import android.util.Log
+import com.grupo6.trego.data.model.DTODireccion
+import com.grupo6.trego.data.model.DTOProducto
+import com.grupo6.trego.data.model.DTORestaurante
+import com.grupo6.trego.data.model.PageResponse
 import com.grupo6.trego.data.remote.RestaurantApiService
 import com.grupo6.trego.data.remote.RetrofitClient
 
@@ -9,13 +12,20 @@ import com.grupo6.trego.data.remote.RetrofitClient
 class RestauranteRepository(
     private val api: RestaurantApiService = RetrofitClient.restaurantService
 ) {
-    // ✅ construye un DireccionDTO y lo envia, ver si solo enviar lat y long
-    suspend fun getRestaurantsByZone(lat: Double, lon: Double): Result<List<RestaurantDTO>> {
+    // construye un DireccionDTO y lo envia, ver si solo enviar lat y long
+    suspend fun getRestaurantsByZone(
+        lat: Double,
+        lon: Double,
+        page: Int = 0,
+        size: Int = 10
+    ): Result<PageResponse<DTORestaurante>> {
         return try {
-            val direccion = DireccionDTO(id = null, etiqueta = null, latitud = lat, longitud = lon, direccion = null)
-            val response = api.listarRestaurantesPorZona(direccion)
+            val response = api.listarRestaurantesPorZona(lat, lon, page, size)
+
             if (response.isSuccessful) {
-                Result.success(response.body() ?: emptyList())
+                // response.body() ahora es un PageResponse.
+                // Si es nulo, devolvemos un PageResponse vacío.
+                Result.success(response.body() ?: PageResponse())
             } else {
                 Result.failure(Exception("Error ${response.code()}"))
             }
@@ -24,7 +34,29 @@ class RestauranteRepository(
         }
     }
 
-    suspend fun searchRestaurantsByName(name: String): Result<List<RestaurantDTO>> {
+    suspend fun getRestaurantsByAddress(direccion: DTODireccion): Result<List<DTORestaurante>> {
+        return try {
+            val response = api.listarRestaurantesPorDireccion(direccion)
+
+            Log.d("API_PRUEBA", "¡Éxito! Restaurantes obtenidos: ${response.size}")
+            Result.success(response)
+
+        } catch (e: Exception) {
+            // Comprobamos si el error es de Retrofit (Error HTTP del servidor)
+            if (e is retrofit2.HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                Log.e("API_PRUEBA", "Error HTTP ${e.code()}: $errorBody")
+            } else {
+                // Es un error de red (sin internet) o falló al leer el JSON
+                Log.e("API_PRUEBA", "Error interno o de conexión: ${e.message}")
+                e.printStackTrace()
+            }
+
+            Result.failure(e)
+        }
+    }
+
+    suspend fun searchRestaurantsByName(name: String): Result<List<DTORestaurante>> {
         return try {
             val response = api.buscarRestaurantesPorNombre(name)
             if (response.isSuccessful) {
@@ -37,11 +69,25 @@ class RestauranteRepository(
         }
     }
 
-    suspend fun getRestaurantMenu(restaurantId: Long): Result<RestaurantDTO> {
+    suspend fun getRestaurantMenu(restaurantId: Long): Result<List<DTOProducto>> {
         return try {
-            val response = api.verMenuRestaurante(restaurantId)
+            val response = api.verMenuRestaurante(restaurantId.toInt(), null, null)
             if (response.isSuccessful) {
-                Result.success(response.body() ?: throw Exception("Menú vacío"))
+                val body = response.body()
+                when (body) {
+                    is List<*> -> {
+                        // Si es una lista, asumimos que son DTOProducto
+                        @Suppress("UNCHECKED_CAST")
+                        Result.success(body as List<DTOProducto>)
+                    }
+
+                    is Map<*, *> -> {
+                        // Si es un mapa con mensaje, es que no hay productos
+                        Result.success(emptyList())
+                    }
+
+                    else -> Result.failure(Exception("Respuesta inesperada"))
+                }
             } else {
                 Result.failure(Exception("Error ${response.code()}"))
             }

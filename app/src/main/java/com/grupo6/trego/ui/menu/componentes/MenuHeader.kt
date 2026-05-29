@@ -13,12 +13,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.grupo6.trego.data.model.RestaurantDTO
+import com.grupo6.trego.data.model.DTORestaurante
 import com.grupo6.trego.ui.theme.TregoOrange
 
 @Composable
 fun MenuHeader(
-    restaurante: RestaurantDTO,
+    restaurante: DTORestaurante,
     onBack: () -> Unit
 ) {
     Box(
@@ -44,13 +44,15 @@ fun MenuHeader(
                         tint = Color.White
                     )
                 }
-                Text(
-                    text = restaurante.nombre,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                restaurante.nombre?.let {
+                    Text(
+                        text = it,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
             }
 
             // Badges: calificación, estado, categoría
@@ -72,7 +74,7 @@ fun MenuHeader(
                         Text("⭐", fontSize = 13.sp)
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            restaurante.calificacion.toString(),
+                            restaurante.calificacionProm.toString(),
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
@@ -93,13 +95,13 @@ fun MenuHeader(
                             modifier = Modifier
                                 .size(8.dp)
                                 .background(
-                                    if (restaurante.abierto) Color(0xFF4CAF50) else Color.Gray,
+                                    if (restaurante.abierto == true) Color(0xFF4CAF50) else Color.Gray,
                                     shape = RoundedCornerShape(50)
                                 )
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            if (restaurante.abierto) "Abierto" else "Cerrado",
+                            if (restaurante.abierto == true) "Abierto" else "Cerrado",
                             color = Color.White,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
@@ -119,7 +121,7 @@ fun MenuHeader(
                         Text("🍽️", fontSize = 13.sp)
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            restaurante.categoria,
+                            text = restaurante.categoria.toString(),
                             color = Color.White,
                             fontSize = 13.sp
                         )

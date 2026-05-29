@@ -64,6 +64,8 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+
     // Navegación
     implementation(libs.androidx.navigation.compose)
 
@@ -86,5 +88,10 @@ dependencies {
 
     // iconos
     implementation(libs.compose.material.icons.extended)
+
+    //Pagin 3
+    implementation(libs.androidx.paging.runtime)
+    implementation(libs.androidx.paging.compose)
+
 
 }

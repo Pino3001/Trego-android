@@ -3,20 +3,15 @@ package com.grupo6.trego.ui.menu
 
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.grupo6.trego.data.mock.MockData
-import com.grupo6.trego.data.model.ProductoDTO
-import com.grupo6.trego.data.model.RestaurantDTO
-import com.grupo6.trego.data.remote.RestaurantApiService
-import com.grupo6.trego.data.remote.RetrofitClient
-import kotlinx.coroutines.launch
+import com.grupo6.trego.data.model.DTOProducto
+import com.grupo6.trego.data.model.DTORestaurante
 
 enum class OrdenPrecio { NINGUNO, MENOR, MAYOR }
 
 sealed class MenuUiState {
     object Loading : MenuUiState()
     object SinProductos : MenuUiState()
-    data class Success(val restaurante: RestaurantDTO) : MenuUiState()
+    data class Success(val restaurante: DTORestaurante) : MenuUiState()
     data class Error(val message: String) : MenuUiState()
 }
 
@@ -34,17 +29,17 @@ class MenuViewModel : ViewModel() {
     var showOrdenDialog by mutableStateOf(false)
         private set
 
-    private var todosLosProductos: List<ProductoDTO> = emptyList()
+    private var todosLosProductos: List<DTOProducto> = emptyList()
 
-    var productosFiltrados by mutableStateOf<List<ProductoDTO>>(emptyList())
+    var productosFiltrados by mutableStateOf<List<DTOProducto>>(emptyList())
         private set
 
-    var ofertas by mutableStateOf<List<ProductoDTO>>(emptyList())
-        private set
+    var ofertas by mutableStateOf<List<DTOProducto>>(emptyList())
+        private set}
 
-    val categorias = listOf("Todos", "Bebidas", "Postres", "Ensaladas", "Entradas", "P. Plato")
+/*    val categorias = listOf("Todos", "Bebidas", "Postres", "Ensaladas", "Entradas", "P. Plato")*/
 
-    fun cargarMenu(restauranteId: Long) {
+/*    fun cargarMenu(restauranteId: Long) {
         // TODO: reemplazar con llamada real al backend
         val restaurante = MockData.restaurantes.find { it.id == restauranteId }
         if (restaurante == null || restaurante.productos.isNullOrEmpty()) {
@@ -68,7 +63,7 @@ class MenuViewModel : ViewModel() {
                 )
             )
         }
-    }
+    }*/
 /*    fun cargarMenu(restauranteId: Long) {
 
        viewModelScope.launch {
@@ -106,7 +101,7 @@ class MenuViewModel : ViewModel() {
             }
         }
     }*/
-
+/*
     fun onCategoriaSeleccionada(categoria: String) {
         categoriaSeleccionada = categoria
         aplicarFiltroYOrden()
@@ -138,4 +133,4 @@ class MenuViewModel : ViewModel() {
 
         productosFiltrados = resultado
     }
-}
+}*/

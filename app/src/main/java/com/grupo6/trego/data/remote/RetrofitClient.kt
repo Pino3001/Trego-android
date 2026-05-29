@@ -42,4 +42,8 @@ object RetrofitClient {
     val restaurantService: RestaurantApiService by lazy {
         getRetrofitInstance().create(RestaurantApiService::class.java)
     }
+
+    val carritoService: CarritoApiService by lazy {
+        getRetrofitInstance().create(CarritoApiService::class.java)
+    }
 }

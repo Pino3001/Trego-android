@@ -19,6 +19,7 @@ retrofit = "2.11.0"
 coil = "2.7.0"
 accompanist = "0.34.0"
 play-services-location = "21.3.0"
+pagingCompose = "3.3.0"
 
 [libraries]
 # --- Core y Test ---
@@ -26,6 +27,7 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleRuntimeKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 
 # --- Compose Base ---
@@ -67,6 +69,11 @@ accompanist-permissions = { group = "com.google.accompanist", name = "accompanis
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "play-services-location" }
 # --- Iconos ---
 compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version = "1.7.8" }
+
+#--- Pagin 3 ------
+androidx-paging-runtime = { group = "androidx.paging", name = "paging-runtime", version.ref = "pagingCompose" }
+androidx-paging-compose = { group = "androidx.paging", name = "paging-compose", version.ref = "pagingCompose" }
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

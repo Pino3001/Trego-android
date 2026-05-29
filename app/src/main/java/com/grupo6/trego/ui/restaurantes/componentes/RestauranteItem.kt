@@ -1,11 +1,15 @@
 package com.grupo6.trego.ui.restaurantes.componentes
 
+import androidx.compose.foundation.background
 import com.grupo6.trego.ui.theme.TregoOrange
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -15,23 +19,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.grupo6.trego.data.model.RestaurantDTO
+import com.grupo6.trego.data.model.DTORestaurante
 import com.grupo6.trego.R
 
 @Composable
 fun RestaurantItem(
-    restaurant: RestaurantDTO,
+    restaurant: DTORestaurante,
     onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
-            .height(100.dp)
-            .clickable { onClick() },
+            .clickable { onClick() },          // sin height fijo
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
         elevation = CardDefaults.cardElevation(2.dp)
@@ -40,12 +44,11 @@ fun RestaurantItem(
             modifier = Modifier.padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Imagen del restaurante
             AsyncImage(
-                model = restaurant.imagenUrl ?: "https://via.placeholder.com/60",
+                model = restaurant.fotoPerfil,   // sin placeholder externo
                 contentDescription = restaurant.nombre,
                 contentScale = ContentScale.Crop,
-                placeholder = painterResource(id = R.drawable.tregologo), // imagen local mientras carga
+                placeholder = painterResource(id = R.drawable.tregologo),
                 error = painterResource(id = R.drawable.tregologo),
                 modifier = Modifier
                     .size(64.dp)
@@ -55,54 +58,69 @@ fun RestaurantItem(
 
             Spacer(Modifier.width(12.dp))
 
-            // Info central
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = restaurant.nombre,
+                    text = restaurant.nombre ?: "",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis   // evita overflow en nombres largos
                 )
                 Text(
-                    text = restaurant.categoria,
-                    fontSize = 12.sp,
+                    text = restaurant.categoria?.name ?: "",
+                    fontSize = 11.sp,
                     color = Color.Gray
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.height(4.dp))
+                // Dirección separada del rating
+                restaurant.direccion?.calle?.let {
                     Text(
-                        text = restaurant.zona,
-                        fontSize = 12.sp,
-                        color = Color.DarkGray
+                        text = it,
+                        fontSize = 10.sp,
+                        color = Color.DarkGray,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text("⭐", fontSize = 12.sp)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        tint = TregoOrange,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(Modifier.width(2.dp))
                     Text(
-                        text = restaurant.calificacion.toString(),
+                        text = restaurant.calificacionProm?.toString() ?: "—",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
             }
 
-            // Info derecha
-            Column(horizontalAlignment = Alignment.End) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                val esAbierto = restaurant.abierto == true
                 // Badge Abierto/Cerrado
                 Surface(
-                    modifier = Modifier.width(70.dp).height(30.dp),
                     shape = RoundedCornerShape(50),
-                    color = if (restaurant.abierto) Color(0xFF4CAF50) else Color.Gray
+                    color = if (esAbierto) Color(0xFF4CAF50) else Color.Gray
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(6.dp)
                                 .clip(CircleShape)
-                            // color del punto interior blanco
+                                .background(Color.White)   // FIX: color faltante
                         )
                         Text(
-                            text = if (restaurant.abierto) "Abierto" else "Cerrado",
+                            text = if (esAbierto) "Abierto" else "Cerrado",
                             fontSize = 11.sp,
                             color = Color.White,
                             fontWeight = FontWeight.SemiBold
@@ -110,32 +128,40 @@ fun RestaurantItem(
                     }
                 }
 
-                Spacer(Modifier.height(4.dp))
-
-                // Badge Ofertas
-                if (restaurant.tieneOfertas) {
+                if (restaurant.ofertas) {
                     Surface(
-                        modifier = Modifier.width(70.dp).height(30.dp),
                         shape = RoundedCornerShape(50),
                         color = TregoOrange
                     ) {
-                        Text(
-                            text = "🏷 Ofertas",
-                            fontSize = 11.sp,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 3.dp)
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Ofertas",
+                                fontSize = 11.sp,
+                                color = Color.White,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
 
-                Spacer(Modifier.height(4.dp))
-
-                // Horario
-                Text(
-                    text = "· ${restaurant.horarioApertura} - ${restaurant.horarioCierre}",
-                    fontSize = 10.sp,
-                    color = Color.Gray
-                )
+                // Horario con ícono
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(11.dp)
+                    )
+                    Spacer(Modifier.width(2.dp))
+                    Text(
+                        text = "${restaurant.horaApertura ?: "N/H"} - ${restaurant.horaCierre ?: "N/H"}",
+                        fontSize = 10.sp,
+                        color = Color.Gray
+                    )
+                }
             }
         }
     }

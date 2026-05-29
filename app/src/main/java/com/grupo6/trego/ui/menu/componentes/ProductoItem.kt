@@ -16,14 +16,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.grupo6.trego.data.model.ProductoDTO
+import com.grupo6.trego.data.model.DTOProducto
 import com.grupo6.trego.ui.carrito.CarritoViewModel
 import com.grupo6.trego.ui.theme.PrecioColor
 import com.grupo6.trego.ui.theme.TregoSecondary
 
 @Composable
 fun ProductoItem(
-    producto: ProductoDTO,
+    producto: DTOProducto,
     onAgregar: () -> Unit
 ) {
     val carritoViewModel: CarritoViewModel = viewModel()
@@ -45,7 +45,7 @@ fun ProductoItem(
         ) {
             // Hay que implementar lo de las imagenes con cloudinary
             AsyncImage(
-                model = producto.imagenUrl ?: "https://via.placeholder.com/70",
+                model = producto.urlImagen ?: "https://via.placeholder.com/70",
                 contentDescription = producto.nombre,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -56,21 +56,25 @@ fun ProductoItem(
             Spacer(Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = producto.nombre,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    maxLines = 1
-                )
-                Text(
-                    text = producto.descripcion,
-                    fontSize = 12.sp,
-                    color = Color.Gray,
-                    maxLines = 1
-                )
+                producto.nombre?.let {
+                    Text(
+                        text = it,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        maxLines = 1
+                    )
+                }
+                producto.descripcion?.let {
+                    Text(
+                        text = it,
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        maxLines = 1
+                    )
+                }
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "${producto.precio.toInt()}$",
+                    text = "${producto.precio?.toInt()}$",
                     color = PrecioColor,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,

@@ -1,6 +1,6 @@
 package com.grupo6.trego.ui.carrito.componentes
 
-import androidx.compose.foundation.background
+import android.R.attr.maxLines
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -32,28 +31,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.VerticalAlignmentLine
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.grupo6.trego.data.model.CarritoItem
+import com.grupo6.trego.data.model.DTOIngrediente
+import com.grupo6.trego.data.model.DTOProductoPedido
 import com.grupo6.trego.ui.theme.TregoOrange
-
-// Ingredientes de ejemplo — reemplazar con los del ProductoDTO cuando el backend los devuelva
-private val ingredientesEjemplo = listOf("Arroz", "Perejil", "Salsa", "Cebolla", "Tomate")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductoDetalleModal(
-    item: CarritoItem,
-    onConfirmar: (CarritoItem) -> Unit,
-    onDismiss: () -> Unit
+    item: DTOProductoPedido,
+    onConfirm: (DTOProductoPedido) -> Unit,
+    onDismiss: () -> Unit,
 ) {
-    var cantidad by remember { mutableStateOf(item.cantidad) }
-    var comentario by remember { mutableStateOf(item.comentario) }
-    var ingredientesQuitados by remember { mutableStateOf(item.ingredientesQuitados.toMutableSet()) }
+    var cantidad by remember { mutableStateOf(item.cantidad ?: 1) }
+    var comentario by remember { mutableStateOf(item.observaciones) }
+    var ingredientesQuitados by remember {
+        mutableStateOf<Set<DTOIngrediente>>(item.ingredientes?.toSet() ?: emptySet<DTOIngrediente>())
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -68,9 +65,9 @@ fun ProductoDetalleModal(
 
             // Imagen del producto
             AsyncImage(
-                model = item.producto.imagenUrl
-                    ?: "https://picsum.photos/seed/${item.producto.id}/400/200",
-                contentDescription = item.producto.nombre,
+                model = item.producto?.urlImagen
+                    ?: "https://picsum.photos/seed/${item.producto?.idProducto}/400/200",
+                contentDescription = item.producto?.nombre,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -81,8 +78,7 @@ fun ProductoDetalleModal(
             Spacer(Modifier.height(8.dp))
 
             // Nombre y precio
-            Text(item.producto.nombre, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Text(item.producto.descripcion, fontSize = 13.sp, color = Color.Gray)
+            item.producto?.nombre?.let { Text(it, fontWeight = FontWeight.Bold, fontSize = 20.sp) }
             Spacer(Modifier.height(4.dp))
 
 
@@ -109,7 +105,13 @@ fun ProductoDetalleModal(
                         ) {
                             Text("<", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TregoOrange)
                         }
-                        Text(cantidad.toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+
+                        Text(
+                            text = "$cantidad",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
                         IconButton(
                             onClick = { cantidad++ },
                             modifier = Modifier.size(36.dp)
@@ -126,7 +128,7 @@ fun ProductoDetalleModal(
                     Text("Precio Unidad", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        "${(item.producto.precioOferta ?: item.producto.precio).toInt()}$",
+                        "${(item.producto?.precioOferta ?: item.producto?.precio)?.toInt()}$",
                         color = TregoOrange,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
@@ -140,21 +142,25 @@ fun ProductoDetalleModal(
             // Quitar ingredientes
             Text("Quitar ingredientes", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
             Spacer(Modifier.height(4.dp))
-            ingredientesEjemplo.chunked(4).forEach { fila ->
+            item.producto?.ingredientes?.chunked(4)?.forEach { fila ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    fila.forEach { ing ->
-                        val quitado = ing in ingredientesQuitados
+                    fila.forEach { ing -> // 'ing' aquí ahora es un objeto DTOIngrediente
+                        val quitado = ingredientesQuitados.contains(ing)
                         FilterChip(
                             selected = quitado,
                             onClick = {
-                                ingredientesQuitados = ingredientesQuitados.toMutableSet().also {
-                                    if (quitado) it.remove(ing) else it.add(ing)
+                                ingredientesQuitados = if (quitado) {
+                                    ingredientesQuitados - ing
+                                } else {
+                                    ingredientesQuitados + ing
                                 }
                             },
-                            label = { Text(ing, fontSize = 12.sp) },
+                            // IMPORTANTE: Modifica 'ing.nombre' por la propiedad real que tenga tu DTO
+                            // para mostrar el texto (puede ser ing.nombre, ing.descripcion, etc.)
+                            label = { Text(text = ing.nombre, fontSize = 12.sp) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = TregoOrange,
                                 selectedLabelColor = Color.White
@@ -169,26 +175,29 @@ fun ProductoDetalleModal(
             // Comentario
             Text("Comentarios", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
             Spacer(Modifier.height(4.dp))
-            OutlinedTextField(
-                value = comentario,
-                onValueChange = { comentario = it },
-                placeholder = { Text("Comentario...") },
-                modifier = Modifier.fillMaxWidth(),
-                maxLines = 3,
-                shape = RoundedCornerShape(16.dp)
-            )
+            comentario?.let { it1 ->
+                OutlinedTextField(
+                    value = it1,
+                    onValueChange = { comentario = it },
+                    placeholder = { Text("Comentario...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 3,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
 
             Spacer(Modifier.height(12.dp))
 
             // Subtotal
-            val subtotal = (item.producto.precioOferta ?: item.producto.precio) * cantidad
+            val subtotal = (item.producto?.precioOferta ?: item.producto?.precio)?.toInt()
+                ?.times(cantidad)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("Subtotal", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                 Text(
-                    "${subtotal.toInt()}$",
+                    "${subtotal?.toString()}$",
                     color = TregoOrange,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
@@ -200,11 +209,14 @@ fun ProductoDetalleModal(
             // Botón confirmar
             Button(
                 onClick = {
-                    onConfirmar(
+                    onConfirm(
                         item.copy(
                             cantidad = cantidad,
-                            comentario = comentario,
-                            ingredientesQuitados = ingredientesQuitados.toList()
+                            observaciones = comentario,
+                            producto = item.producto,
+                            ingredientes = ingredientesQuitados as List<DTOIngrediente>?,
+                            subtotal = item.subtotal,
+                            cantidadDisponible = item.subtotal as Int?,
                         )
                     )
                 },

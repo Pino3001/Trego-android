@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
+import com.grupo6.trego.data.model.EnumCategoriaRestaurante
 import com.grupo6.trego.ui.restaurantes.FilterState
 import com.grupo6.trego.ui.theme.TregoOrange
 
@@ -17,11 +18,11 @@ fun FilterBottomSheet(
     onApply: (FilterState) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var selectedCategoria by remember { mutableStateOf(currentFilter.categoria) }
+    var selectedCategoria: EnumCategoriaRestaurante? by remember { mutableStateOf(currentFilter.categoria) }
     var selectedCalificacion by remember { mutableStateOf(currentFilter.calificacionMinima) }
     var soloAbiertos by remember { mutableStateOf(currentFilter.soloAbiertos) }
 
-    val categorias = listOf("Pizza", "Sushi", "Hamburguesas", "Ensaladas", "Pasta", "Parrilla")
+    val categorias: List<EnumCategoriaRestaurante> = enumValues<EnumCategoriaRestaurante>().toList()
     val calificaciones = listOf(3.0, 3.5, 4.0, 4.5)
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -41,7 +42,7 @@ fun FilterBottomSheet(
                             onClick = {
                                 selectedCategoria = if (selectedCategoria == cat) null else cat
                             },
-                            label = { Text(cat, fontSize = 12.sp) },
+                            label = { Text(cat.name, fontSize = 12.sp) },
                             modifier = Modifier.padding(end = 8.dp, bottom = 4.dp)
                         )
                     }

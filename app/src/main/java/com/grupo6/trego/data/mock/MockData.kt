@@ -1,13 +1,14 @@
 package com.grupo6.trego.data.mock
 
 
-import com.grupo6.trego.data.model.ProductoDTO
-import com.grupo6.trego.data.model.RestaurantDTO
-
+/*
 object MockData {
 
-    val productos = listOf(
-        ProductoDTO(
+*/
+/*    val productos = listOf(
+*//*
+*/
+/*        ProductoDTO(
             id = 1,
             nombre = "Tallarines con calamares",
             descripcion = "Tallarines con calamares y tomate fresco.",
@@ -76,8 +77,11 @@ object MockData {
             precio = 520.0,
             categoria = "P. Plato",
             imagenUrl = "https://images.unsplash.com/photo-1612874742237-6526221588e3?w=400"
-        )
-    )
+        )*//*
+*/
+/*
+    )*//*
+
 
     val restaurantes = listOf(
         RestaurantDTO(
@@ -133,4 +137,4 @@ object MockData {
             productos = emptyList()
         )
     )
-}
+}*/

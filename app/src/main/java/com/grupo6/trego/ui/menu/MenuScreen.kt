@@ -32,7 +32,7 @@ fun MenuScreen(
     navController: NavController,
     viewModel: MenuViewModel = viewModel(),
 ) {
-    val activity = LocalContext.current as ComponentActivity
+/*    val activity = LocalContext.current as ComponentActivity
     val carritoViewModel: CarritoViewModel = viewModel(viewModelStoreOwner = activity)
 
     LaunchedEffect(restauranteId) {
@@ -212,5 +212,5 @@ fun MenuScreen(
                 }
             }
         }
-    }
+    }*/
 }

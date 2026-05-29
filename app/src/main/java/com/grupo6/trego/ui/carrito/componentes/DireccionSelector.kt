@@ -1,7 +1,6 @@
 package com.grupo6.trego.ui.carrito.componentes
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
@@ -12,14 +11,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.grupo6.trego.data.model.DireccionDTO
-import com.grupo6.trego.ui.theme.TregoOrange
+import com.grupo6.trego.data.model.DTODireccion
 
 @Composable
 fun DireccionSelector(
-    direcciones: List<DireccionDTO>,
-    seleccionada: DireccionDTO?,
-    onSeleccionar: (DireccionDTO) -> Unit,
+    direcciones: List<DTODireccion>,
+    seleccionada: DTODireccion?,
+    onSeleccionar: (DTODireccion) -> Unit,
     onUbicacionActual: () -> Unit
 ) {
     Row(
