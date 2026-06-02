@@ -37,4 +37,16 @@ class PedidoRepository(private val api: PedidoApiService) {
             Result.failure(e)
         }
     }
+    suspend fun obtenerPedidosHistorial(): Result<List<DTOPedido>> {
+        return try {
+            val response = api.obtenerPedidosCliente()
+            if (response.isSuccessful) {
+                Result.success(response.body() ?: emptyList())
+            } else {
+                Result.failure(Exception("Error al obtener pedidos: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

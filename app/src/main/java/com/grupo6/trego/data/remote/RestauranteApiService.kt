@@ -41,9 +41,9 @@ interface RestaurantApiService {
         @Query("orden") orden: String? = null
     ): Response<DTORestaurante>
 
-    @GET("restaurante/obtenerRestaurante/{id}")
+    @GET("restaurantes/obtenerRestaurante/{id}")
     suspend fun verRestauranteData(
-        @Path("id") restauranteId: Int
+        @Path("id") id: String
     ): Response<DTORestaurante>
 
 }

@@ -15,6 +15,9 @@ interface PedidoApiService {
         @Body request: DTODireccion
     ): Response<DTOPreferenciaMP>
 
-    @GET("pedido/misPedidos")
+    @GET("pedido/misPedidosActuales")
     suspend fun obtenerPedidosCliente(): Response<List<DTOPedido>>
+
+    @GET("pedido/misPedidos")
+    suspend fun obtenerPedidosHistorial(): Response<List<DTOPedido>>
 }

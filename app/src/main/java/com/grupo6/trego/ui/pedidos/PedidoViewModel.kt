@@ -16,12 +16,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 sealed class PedidoUiState {
+    object Idle : PedidoUiState() // Estado inicial para cuando el modal está cerrado
     object Loading : PedidoUiState()
-    data class Success(
-        val activos: List<PedidoUiModel>,
-        val historial: List<PedidoUiModel>
-    ) : PedidoUiState()
 
+    data class Success(val activos: List<PedidoUiModel>) : PedidoUiState()
+    data class Historial(val historial: List<PedidoUiModel>) : PedidoUiState()
     data class Error(val message: String) : PedidoUiState()
 }
 
@@ -30,8 +29,11 @@ class PedidoViewModel(
     private val repositoryRestaurante: RestauranteRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<PedidoUiState>(PedidoUiState.Loading)
-    val uiState: StateFlow<PedidoUiState> = _uiState.asStateFlow()
+    private val _activosState = MutableStateFlow<PedidoUiState>(PedidoUiState.Loading)
+    val activosState: StateFlow<PedidoUiState> = _activosState.asStateFlow()
+
+    private val _historialState = MutableStateFlow<PedidoUiState>(PedidoUiState.Idle)
+    val historialState: StateFlow<PedidoUiState> = _historialState.asStateFlow()
 
     init {
         cargarPedidos()
@@ -39,9 +41,54 @@ class PedidoViewModel(
 
     fun cargarPedidos() {
         viewModelScope.launch {
-            _uiState.value = PedidoUiState.Loading
+            _activosState.value = PedidoUiState.Loading
 
             repository.obtenerPedidosCliente()
+                .onSuccess { todosLosPedidos ->
+
+                    // Obtener una lista de IDs de restaurantes únicos (como Long para el repo)
+                    val idsRestaurantes = todosLosPedidos.mapNotNull { it.idRestaurante?.toLong() }.distinct()
+
+                    // Buscar los detalles de los restaurantes en paralelo
+                    val restaurantesMap = coroutineScope {
+                        idsRestaurantes.map { id ->
+                            async {
+                                // En lugar de usar getOrNull() directo, evaluamos el resultado
+                                val resultado = repositoryRestaurante.getRestauranteDatos(id)
+
+                                resultado.onFailure { error ->
+                                    // ¡Esto te dirá si la API de restaurantes está fallando!
+                                    Log.e("PedidoViewModel", "Error al cargar restaurante $id: ${error.message}")
+                                }
+
+                                id to resultado.getOrNull()
+                            }
+                        }.awaitAll().toMap()
+                    }
+
+                       // Mapear tus DTOPedido a PedidoUiModel combinando los datos
+                    val pedidosConRestaurante = todosLosPedidos.map { pedido ->
+                        val restaurante = restaurantesMap[pedido.idRestaurante?.toLong()]
+                        PedidoUiModel(
+                            pedido = pedido,
+                            nombreRestaurante = restaurante?.nombre ?: "Restaurante Desconocido",
+                            telefonoRestaurante = restaurante?.telefono ?: "Sin teléfono"
+                        )
+                      }
+
+                    _activosState.value = PedidoUiState.Success(pedidosConRestaurante)
+                }
+                .onFailure {
+                    _activosState.value = PedidoUiState.Error(it.message ?: "Error desconocido")
+                }
+        }
+    }
+
+    fun cargarHistorial(){
+        viewModelScope.launch {
+            _historialState.value = PedidoUiState.Loading
+
+            repository.obtenerPedidosHistorial()
                 .onSuccess { todosLosPedidos ->
 
                     // Obtener una lista de IDs de restaurantes únicos (como Long para el repo)
@@ -75,27 +122,18 @@ class PedidoViewModel(
                     }
 
                     //  Filtrar -- Deveria de venir todo ya filtrado
-                    val activos = pedidosConRestaurante.filter {
-                        it.pedido.estado in listOf(
-                            EnumEstadoPedido.Pagado,
-                            EnumEstadoPedido.Aprobado,
-                            EnumEstadoPedido.EnCamino
-                        )
-                    }
-
                     val historial = pedidosConRestaurante.filter {
                         it.pedido.estado in listOf(
-                            EnumEstadoPedido.Entregado,
                             EnumEstadoPedido.Cancelado,
-                            EnumEstadoPedido.Reembolsado,
-                            EnumEstadoPedido.PagoRechazado
+                            EnumEstadoPedido.Entregado,
+                            EnumEstadoPedido.Reembolsado
                         )
                     }
 
-                    _uiState.value = PedidoUiState.Success(activos, historial)
+                    _historialState.value = PedidoUiState.Historial(historial)
                 }
                 .onFailure {
-                    _uiState.value = PedidoUiState.Error(it.message ?: "Error desconocido")
+                    _historialState.value = PedidoUiState.Error(it.message ?: "Error desconocido")
                 }
         }
     }

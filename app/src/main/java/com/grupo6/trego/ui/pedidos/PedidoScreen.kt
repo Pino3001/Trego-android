@@ -1,5 +1,6 @@
 package com.grupo6.trego.ui.pedidos
 
+import android.app.AlertDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,18 +20,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.ReceiptLong
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -45,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.grupo6.trego.data.model.EnumEstadoPedido
 import com.grupo6.trego.data.model.PedidoUiModel
+import com.grupo6.trego.ui.componentes.Activeard
 import com.grupo6.trego.ui.componentes.TregoHeader
 import com.grupo6.trego.ui.theme.TregoOrange
 import org.koin.androidx.compose.koinViewModel
@@ -55,7 +55,9 @@ import java.time.format.DateTimeFormatter
 fun PedidoScreen(
     viewModel: PedidoViewModel = koinViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val activosState by viewModel.activosState.collectAsState()
+    val historialState by viewModel.historialState.collectAsState()
+
     var showHistoryModal by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -73,22 +75,36 @@ fun PedidoScreen(
                         fontSize = 20.sp,
                         fontWeight = FontWeight.ExtraBold
                     )
-                    IconButton(
-                        onClick = { showHistoryModal = true },
+                    Row(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
                             .padding(end = 16.dp)
                     ) {
-                        Icon(Icons.Default.History, "Historial", tint = Color.White)
+                        // Botón para recargar los pedidos activos manualmente
+                        IconButton(onClick = { viewModel.cargarPedidos() }) {
+                            Icon(Icons.Default.Refresh, "Recargar", tint = Color.White)
+                        }
+
+                        // Botón para abrir el historial
+                        IconButton(
+                            onClick = {
+                                showHistoryModal = true
+                                viewModel.cargarHistorial() // Disparamos la carga al abrir
+                            }
+                        ) {
+                            Icon(Icons.Default.History, "Historial", tint = Color.White)
+                        }
                     }
                 }
             }
         }
     ) { padding ->
-        Box(modifier = Modifier
-            .padding(padding)
-            .fillMaxSize()) {
-            when (val state = uiState) {
+        Box(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+            when (val state = activosState) {
                 is PedidoUiState.Loading -> {
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center),
@@ -121,85 +137,54 @@ fun PedidoScreen(
                                 )
                             }
                             items(state.activos) { pedido ->
-                                ActiveOrderCard(pedido)
+                                Activeard(pedido)
                             }
                         }
                     }
 
-                    if (showHistoryModal) {
+                }
+
+                else -> {}
+
+            }
+
+            if (showHistoryModal) {
+                when (val hState = historialState) {
+                    is PedidoUiState.Loading -> {
+                        // Muestra un loader centrado sobre la pantalla mientras baja el historial
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.5f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = TregoOrange)
+                        }
+                    }
+
+                    is PedidoUiState.Historial -> {
                         HistorialModal(
-                            pedidoModel = state.historial,
+                            pedidoModel = hState.historial,
                             onDismiss = { showHistoryModal = false }
                         )
                     }
+
+                    is PedidoUiState.Error -> {
+                        // Si falla el historial, mostramos un cartelito y cerramos el modal
+                        androidx.compose.material3.AlertDialog(
+                            onDismissRequest = { showHistoryModal = false },
+                            confirmButton = {
+                                TextButton(onClick = { showHistoryModal = false }) {
+                                    Text("Aceptar")
+                                }
+                            },
+                            title = { Text("Error") },
+                            text = { Text(hState.message) }
+                        )
+                    }
+
+                    else -> {}
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun ActiveOrderCard(pedidoModel: PedidoUiModel) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        "Pedido #${pedidoModel.pedido.idPedido}",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
-                    Text(
-                        pedidoModel.pedido.estado?.name ?: "Estado desconocido",
-                        color = TregoOrange,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp
-                    )
-                    Text(
-                        pedidoModel.nombreRestaurante ?: "Estado desconocido",
-                        color = TregoOrange,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp
-                    )
-                }
-                Icon(
-                    Icons.Default.ReceiptLong,
-                    contentDescription = null,
-                    tint = TregoOrange,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-
-            Spacer(Modifier.height(12.dp))
-            HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
-            Spacer(Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Total", color = Color.Gray)
-                Text("$${pedidoModel.pedido.total}", fontWeight = FontWeight.Bold)
-            }
-
-            if (pedidoModel.pedido.horaEntregaEstimada != null) {
-                val time =
-                    pedidoModel.pedido.horaEntregaEstimada.format(DateTimeFormatter.ofPattern("HH:mm"))
-                Text(
-                    "Entrega estimada: $time",
-                    fontSize = 12.sp,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
             }
         }
     }
@@ -226,9 +211,11 @@ fun HistorialModal(pedidoModel: List<PedidoUiModel>, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         containerColor = Color.White
     ) {
-        Column(modifier = Modifier
-            .padding(16.dp)
-            .fillMaxHeight(0.8f)) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxHeight(0.8f)
+        ) {
             Text(
                 "HISTORIAL DE PEDIDOS",
                 style = MaterialTheme.typography.titleLarge,

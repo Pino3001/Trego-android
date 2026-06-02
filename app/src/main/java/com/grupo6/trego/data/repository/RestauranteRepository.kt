@@ -88,7 +88,7 @@ class RestauranteRepository(
 
     suspend fun getRestauranteDatos(restaurantId: Long): Result<DTORestaurante> {
         return try {
-            val response = api.verRestauranteData(restaurantId.toInt())
+            val response = api.verRestauranteData(restaurantId.toString())
             if (response.isSuccessful) {
                 val body = response.body()
                 if (body != null) {

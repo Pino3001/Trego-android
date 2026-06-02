@@ -1,8 +1,7 @@
 package com.grupo6.trego.ui.carrito
 
-import android.content.Intent
-import android.net.Uri
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,10 +21,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -40,7 +39,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,14 +54,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import com.grupo6.trego.R
 import com.grupo6.trego.ui.carrito.componentes.CarritoItemCard
@@ -98,10 +94,12 @@ fun CarritoScreen(
                 }
                 viewModel.reiniciar()
             }
+
             is CarritoUiState.PagoRechazado -> {
                 // Mostramos un mensaje flotante de que el pago falló
                 snackbarHostState.showSnackbar("El pago fue rechazado. Por favor, intenta nuevamente.")
             }
+
             else -> {}
         }
     }
@@ -127,10 +125,10 @@ fun CarritoScreen(
     }
 
     // ─── ALERTAS PROFESIONALES (SUSTITUYEN AlertDialogs simples) ──────────
-    
+
     // Diálogo de error / validación usando DialogComponent reutilizable
     var errorDialogMessage by remember { mutableStateOf<String?>(null) }
-    
+
     if (errorDialogMessage != null) {
         DialogComponent(
             message = errorDialogMessage!!,
@@ -293,10 +291,20 @@ fun CarritoScreen(
                             modifier = Modifier.weight(1f),
                             contentPadding = PaddingValues(vertical = 8.dp)
                         ) {
+
                             item {
                                 SelectorDireccionItem(
                                     viewModel = viewModel,
                                     onAbrirSelector = { mostrarSelectorDireccion = true }
+                                )
+                            }
+                            item {
+                                Text(
+                                    "Lista de Pedidos:",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontSize = 14.sp,
+                                    color = Color.Gray,
+                                    textAlign = TextAlign.Center
                                 )
                             }
                             items(state.items) { item ->
@@ -304,7 +312,12 @@ fun CarritoScreen(
                                     item = item,
                                     onEditar = { viewModel.abrirModalEditar(item) },
                                     onEliminar = { viewModel.eliminarItem(item) },
-                                    onCambiarCantidad = { delta -> viewModel.cambiarCantidad(item, delta) }
+                                    onCambiarCantidad = { delta ->
+                                        viewModel.cambiarCantidad(
+                                            item,
+                                            delta
+                                        )
+                                    }
                                 )
                             }
                         }
@@ -368,7 +381,12 @@ fun CarritoScreen(
                                     item = item,
                                     onEditar = { viewModel.abrirModalEditar(item) },
                                     onEliminar = { viewModel.eliminarItem(item) },
-                                    onCambiarCantidad = { delta -> viewModel.cambiarCantidad(item, delta) }
+                                    onCambiarCantidad = { delta ->
+                                        viewModel.cambiarCantidad(
+                                            item,
+                                            delta
+                                        )
+                                    }
                                 )
                             }
                         }
@@ -407,7 +425,12 @@ fun CarritoScreen(
                                     item = item,
                                     onEditar = { viewModel.abrirModalEditar(item) },
                                     onEliminar = { viewModel.eliminarItem(item) },
-                                    onCambiarCantidad = { delta -> viewModel.cambiarCantidad(item, delta) }
+                                    onCambiarCantidad = { delta ->
+                                        viewModel.cambiarCantidad(
+                                            item,
+                                            delta
+                                        )
+                                    }
                                 )
                             }
                         }
@@ -423,9 +446,15 @@ fun CarritoScreen(
                 is CarritoUiState.RestauranteCerrado -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("El restaurante está cerrado", style = MaterialTheme.typography.headlineSmall)
+                            Text(
+                                "El restaurante está cerrado",
+                                style = MaterialTheme.typography.headlineSmall
+                            )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("No se pueden realizar pedidos en este momento.", color = Color.Gray)
+                            Text(
+                                "No se pueden realizar pedidos en este momento.",
+                                color = Color.Gray
+                            )
                         }
                     }
                 }
@@ -463,27 +492,61 @@ private fun SelectorDireccionItem(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
-        Text("Entregar en:", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
+        Text(
+            "Entregar en:",
+            style = MaterialTheme.typography.labelLarge,
+            fontSize = 14.sp,
+            color = Color.Gray
+        )
         Button(
             onClick = onAbrirSelector,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (viewModel.direccionSeleccionada != null)
-                    Color(0xFFF5F5F5) else colorResource(id = R.color.trego_orange),
-                contentColor = if (viewModel.direccionSeleccionada != null)
-                    Color.Black else Color(0xFFF5F5F5),
+                containerColor = Color.White,
+                contentColor = if (viewModel.direccionSeleccionada != null) Color.Black else TregoOrange,
             ),
-            shape = RoundedCornerShape(16.dp),
-            contentPadding = PaddingValues(12.dp)
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 6.dp, // Bajé un poco la sombra para que sea más elegante
+                pressedElevation = 2.dp
+            ),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(
+                width = 1.dp,
+                color = if (viewModel.direccionSeleccionada != null) Color.LightGray else TregoOrange.copy(
+                    alpha = 0.5f
+                )
+            ),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp) // Espacio uniforme entre icono y texto
+            ) {
+                // Icono a la izquierda: Da contexto inmediato
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = if (viewModel.direccionSeleccionada != null) TregoOrange else TregoOrange
+                )
+
                 Text(
-                    text = viewModel.direccionSeleccionada?.calle ?: "Seleccionar dirección",
-                    fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Center,
+                    text = viewModel.direccionSeleccionada?.calle
+                        ?: "Seleccionar dirección de entrega",
+                    fontWeight = if (viewModel.direccionSeleccionada != null) FontWeight.SemiBold else FontWeight.Medium,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
+                )
+
+                // Indicador de acción (flecha)
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = "Cambiar",
+                    tint = Color.Gray
                 )
             }
         }
@@ -527,7 +590,12 @@ private fun TotalYBoton(
             colors = ButtonDefaults.buttonColors(containerColor = TregoOrange),
             shape = RoundedCornerShape(50)
         ) {
-            Text(labelBoton, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp, color = Color.White)
+            Text(
+                labelBoton,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 12.sp,
+                color = Color.White
+            )
         }
     }
 }
@@ -552,12 +620,22 @@ private fun BannerEstadoPago(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.Top
         ) {
-            Icon(imageVector = icono, contentDescription = null, tint = tintIcono, modifier = Modifier.size(22.dp))
+            Icon(
+                imageVector = icono,
+                contentDescription = null,
+                tint = tintIcono,
+                modifier = Modifier.size(22.dp)
+            )
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(titulo, fontWeight = FontWeight.SemiBold, color = tintIcono, fontSize = 14.sp)
                 Spacer(Modifier.height(2.dp))
-                Text(mensaje, fontSize = 12.sp, color = tintIcono.copy(alpha = 0.85f), lineHeight = 16.sp)
+                Text(
+                    mensaje,
+                    fontSize = 12.sp,
+                    color = tintIcono.copy(alpha = 0.85f),
+                    lineHeight = 16.sp
+                )
             }
         }
     }

@@ -45,7 +45,7 @@ fun AppNavigation() {
     val carritoViewModel: CarritoViewModel = koinViewModel()
     val pedidoViewModel: PedidoViewModel = koinViewModel()
 
-    val pedidoState by pedidoViewModel.uiState.collectAsState()
+    val pedidoState by pedidoViewModel.activosState.collectAsState()
     val activeOrdersCount = if (pedidoState is PedidoUiState.Success) {
         (pedidoState as PedidoUiState.Success).activos.size
     } else 0
