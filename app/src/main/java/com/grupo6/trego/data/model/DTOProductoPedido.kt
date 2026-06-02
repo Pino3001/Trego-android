@@ -5,7 +5,7 @@ data class DTOProductoPedido(
     val ingredientes: List<DTOIngrediente>?,
     val observaciones: String?,
     val cantidad: Int?,
-    val subtotal: Double?,
+    val subtotal: Float?,
     val producto: DTOProductoSimplificado?
 ) {
 }

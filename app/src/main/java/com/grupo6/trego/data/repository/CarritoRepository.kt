@@ -3,10 +3,9 @@ import com.grupo6.trego.data.model.DTOCarrito
 import com.grupo6.trego.data.model.DTOEliminarProductoRequest
 import com.grupo6.trego.data.model.DTOProductoPedido
 import com.grupo6.trego.data.remote.CarritoApiService
-import com.grupo6.trego.data.remote.RetrofitClient
 
 class CarritoRepository(
-    private val api: CarritoApiService = RetrofitClient.carritoService
+    private val api: CarritoApiService
 ) {
 
     suspend fun obtenerCarrito(): Result<DTOCarrito?> {

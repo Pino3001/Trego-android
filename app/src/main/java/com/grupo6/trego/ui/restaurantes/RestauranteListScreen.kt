@@ -4,17 +4,38 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import com.grupo6.trego.data.model.DTODireccion
-import com.grupo6.trego.data.model.DTORestaurante
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOff
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,29 +45,32 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.paging.LoadState
-import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.grupo6.trego.R
+import com.grupo6.trego.data.model.DTODireccion
+import com.grupo6.trego.data.model.DTORestaurante
+import com.grupo6.trego.data.utilities.LocationState
+import com.grupo6.trego.data.utilities.RequestLocation
+import com.grupo6.trego.ui.carrito.CarritoViewModel
 import com.grupo6.trego.ui.componentes.SearchBar
+import com.grupo6.trego.ui.componentes.TregoHeader
 import com.grupo6.trego.ui.restaurantes.componentes.EmptyState
 import com.grupo6.trego.ui.restaurantes.componentes.FilterBottomSheet
 import com.grupo6.trego.ui.restaurantes.componentes.RestaurantItem
-import com.grupo6.trego.ui.tabs.NavigationTabs
 import com.grupo6.trego.ui.theme.TregoOrange
-import com.grupo6.trego.data.utilities.LocationState
-import com.grupo6.trego.data.utilities.RequestLocation
+import org.koin.androidx.compose.koinViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RestaurantListScreen(
-    viewModel: RestauranteViewModel = viewModel(),
     onRestaurantClick: (Long) -> Unit,
     navController: NavController
 ) {
+    val carritoViewModel: CarritoViewModel = koinViewModel()
+    val viewModel: RestauranteViewModel = koinViewModel()
     val context = LocalContext.current
     var showFilterSheet by remember { mutableStateOf(false) }
     val locationState by viewModel.locationState.collectAsState()
@@ -59,14 +83,23 @@ fun RestaurantListScreen(
             is LocationState.Available -> {
                 viewModel.onLocationAvailable(state.lat, state.lon)
                 // Disparamos la búsqueda por dirección automáticamente
-                viewModel.searchRestaurantsByAddress(DTODireccion(latitud = state.lat, longitud = state.lon))
+                viewModel.searchRestaurantsByAddress(
+                    DTODireccion(
+                        latitud = state.lat,
+                        longitud = state.lon
+                    )
+                )
             }
+
             LocationState.LocationUnavailable ->
                 viewModel.onLocationUnavailable()
+
             LocationState.PermissionDenied ->
                 viewModel.onPermissionDenied()
+
             LocationState.RequestingPermission ->
                 viewModel.onRequestingPermission()
+
             LocationState.Idle -> Unit
         }
     }
@@ -88,35 +121,33 @@ fun RestaurantListScreen(
 
     Scaffold(
         topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(TregoOrange),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "TREGO",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
-                    )
-                    Image(
-                        painter = painterResource(id = R.drawable.tregologo),
-                        contentDescription = "Logo Trego",
-                        modifier = Modifier.size(110.dp)
-                    )
+            Column(modifier = Modifier.fillMaxWidth()) {
+
+                TregoHeader {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "TREGO",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                        Image(
+                            painter = painterResource(id = R.drawable.tregologo),
+                            contentDescription = "Logo Trego",
+                            modifier = Modifier.size(110.dp)
+                        )
+                    }
                 }
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .background(Color.White)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     SearchBar(
@@ -126,26 +157,18 @@ fun RestaurantListScreen(
                         placeholderText = "Buscar Restaurante",
                         modifier = Modifier.weight(1f)
                     )
+
                     Spacer(Modifier.width(8.dp))
+
                     IconButton(onClick = { showFilterSheet = true }) {
-                        Icon(Icons.Default.Tune, contentDescription = "Filtros", tint = TregoOrange)
-                    }
-                    // Refresh: reintenta ubicación y búsqueda
-                    IconButton(onClick = {
-                        locationRetryKey++
-                        // lazyRestaurantItems.refresh() // Comentado (Paging)
-                        if (locationState is LocationState.Available) {
-                            val loc = locationState as LocationState.Available
-                            viewModel.searchRestaurantsByAddress(DTODireccion(latitud = loc.lat, longitud = loc.lon))
-                        }
-                    }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Recargar", tint = TregoOrange)
+                        Icon(
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = "Filtros",
+                            tint = Color.Black
+                        )
                     }
                 }
             }
-        },
-        bottomBar = {
-            NavigationTabs(navController = navController, currentRoute = "restaurants")
         }
     ) { innerPadding ->
         Box(
@@ -171,7 +194,11 @@ fun RestaurantListScreen(
                             // Abre la pantalla de permisos de la app directamente
                             context.startActivity(
                                 Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                    data = android.net.Uri.fromParts("package", context.packageName, null)
+                                    data = android.net.Uri.fromParts(
+                                        "package",
+                                        context.packageName,
+                                        null
+                                    )
                                 }
                             )
                         }
@@ -191,14 +218,19 @@ fun RestaurantListScreen(
                     if (viewModel.isSearchMode) {
                         when (val searchState = viewModel.searchUiState) {
                             SearchUiState.Loading -> {
-                                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = TregoOrange)
+                                CircularProgressIndicator(
+                                    modifier = Modifier.align(Alignment.Center),
+                                    color = TregoOrange
+                                )
                             }
+
                             is SearchUiState.Success -> {
                                 RestaurantSimpleList(
                                     restaurants = searchState.restaurants,
                                     onRestaurantClick = onRestaurantClick
                                 )
                             }
+
                             is SearchUiState.Error -> EmptyState(searchState.message)
                             SearchUiState.Empty -> EmptyState("No se encontraron restaurantes.")
                             SearchUiState.Idle -> Unit
@@ -207,14 +239,19 @@ fun RestaurantListScreen(
                         // Resultados de la búsqueda por dirección (searchRestaurantsByAddress)
                         when (addressSearchState) {
                             AddressSearchUiState.Loading -> {
-                                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = TregoOrange)
+                                CircularProgressIndicator(
+                                    modifier = Modifier.align(Alignment.Center),
+                                    color = TregoOrange
+                                )
                             }
+
                             is AddressSearchUiState.Success -> {
                                 RestaurantSimpleList(
                                     restaurants = addressSearchState.restaurants,
                                     onRestaurantClick = onRestaurantClick
                                 )
                             }
+
                             is AddressSearchUiState.Error -> EmptyState(addressSearchState.message)
                             AddressSearchUiState.Empty -> EmptyState("No hay restaurantes disponibles en tu zona.")
                             AddressSearchUiState.Idle -> Unit
@@ -290,7 +327,11 @@ private fun RestaurantPagedList(
             lazyItems[index]?.let { restaurant ->
                 RestaurantItem(
                     restaurant = restaurant,
-                    onClick = { onRestaurantClick(restaurant.idRestaurante?.toLong() ?: 0L) }
+                    onClick = {
+                        onRestaurantClick(
+                            restaurant.idRestaurante?.toLong() ?: 0L
+                        )
+                    }
                 )
             }
         }
@@ -298,10 +339,15 @@ private fun RestaurantPagedList(
         if (lazyItems.loadState.append is LoadState.Loading) {
             item {
                 Box(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = TregoOrange)
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = TregoOrange
+                    )
                 }
             }
         }
@@ -309,7 +355,9 @@ private fun RestaurantPagedList(
         if (lazyItems.loadState.append is LoadState.Error) {
             item {
                 Box(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     TextButton(onClick = { lazyItems.retry() }) {

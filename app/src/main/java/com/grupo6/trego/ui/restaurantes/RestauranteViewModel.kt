@@ -55,7 +55,7 @@ sealed class AddressSearchUiState {
 // ---------------------------------------------------------------------------
 
 class RestauranteViewModel(
-    private val repository: RestauranteRepository = RestauranteRepository()
+    private val repository: RestauranteRepository
 ) : ViewModel() {
 
     // --- Estado de ubicación (expuesto para que la Screen decida qué mostrar) ---

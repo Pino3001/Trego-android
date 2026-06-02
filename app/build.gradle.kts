@@ -29,6 +29,7 @@ android {
         }
     }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -41,6 +42,7 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring(libs.desugarJdkLibs)
     // --- Firebase (Base) ---
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
@@ -77,8 +79,10 @@ dependencies {
     // Retrofit + Gson Converter
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.gson)
+
     // Imágenes
     implementation(libs.coil.compose)
+    implementation(libs.coil.svg)
 
     // Permisos en Compose
     implementation(libs.accompanist.permissions)
@@ -93,5 +97,12 @@ dependencies {
     implementation(libs.androidx.paging.runtime)
     implementation(libs.androidx.paging.compose)
 
+    //Koin
+    implementation(libs.koin.android)
+    implementation(libs.koin.androidx.compose)
 
+    implementation(libs.okhttp.logging)
+
+    //Abrir navegador
+    implementation(libs.androidx.browser)
 }

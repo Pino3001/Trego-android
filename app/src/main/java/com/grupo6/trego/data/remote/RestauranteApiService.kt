@@ -34,40 +34,16 @@ interface RestaurantApiService {
 
     // ── Ver menú de un restaurante (con sus productos) ──
 
-    @GET("restaurante/{restauranteId}/verMenu")
+    @GET("pedido/restaurante/{restauranteId}/verMenu")
     suspend fun verMenuRestaurante(
         @Path("restauranteId") restauranteId: Int,
         @Query("categoria") categoria: String? = null,
         @Query("orden") orden: String? = null
-    ): Response<Any>
-
-    @GET("restaurantes/{id}/productos")
-    suspend fun verMenuRestaurante(
-        @Path("id") restauranteId: Long
     ): Response<DTORestaurante>
 
-    // ── Obtener un restaurante por ID (sin productos) ──
-    @GET("restaurantes/{id}")
-    suspend fun obtenerRestaurante(
-        @Path("id") restauranteId: Long
+    @GET("restaurante/obtenerRestaurante/{id}")
+    suspend fun verRestauranteData(
+        @Path("id") restauranteId: Int
     ): Response<DTORestaurante>
 
-    // ── Crear un restaurante nuevo ──
-    @POST("restaurantes")
-    suspend fun crearRestaurante(
-        @Body restaurante: DTORestaurante
-    ): Response<DTORestaurante>
-
-    // ── Abrir local (indicar que está abierto a una hora) ──
-    @POST("restaurantes/{id}/abrir")
-    suspend fun abrirLocal(
-        @Path("id") idRestaurante: Long,
-        @Body horaServicio: String   // usar un DTO con la fecha/hora
-    ): Response<Unit>
-
-    // ── Cerrar local ──
-    @POST("restaurantes/{id}/cerrar")
-    suspend fun cerrarLocal(
-        @Path("id") restauranteId: Long
-    ): Response<Unit>
 }

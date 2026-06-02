@@ -40,13 +40,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import com.grupo6.trego.ui.theme.TregoOrange
+import org.koin.androidx.compose.koinViewModel
 import java.util.concurrent.TimeUnit
 
 
@@ -54,10 +54,9 @@ enum class AuthStep { PHONE, VERIFY }
 
 @Composable
 fun PhoneAuthScreen(
-    viewModel: PhoneAuthViewModel = viewModel(),
     onAuthSuccess: () -> Unit
 ) {
-    val context = LocalContext.current
+    val viewModel: PhoneAuthViewModel = koinViewModel()
     val auth = remember { FirebaseAuth.getInstance() }
     val activity = LocalContext.current as Activity
 
@@ -72,7 +71,6 @@ fun PhoneAuthScreen(
 
                             // 🚀 ACTUALIZADO: Agregamos el onError para manejar la caída del backend
                             viewModel.sendSMSTokenToBackend(
-                                context = context,
                                 firebaseToken = firebaseToken,
                                 onSuccess = { onAuthSuccess() },
                                 onError = {
@@ -291,7 +289,6 @@ private fun VerifyStep(
         Button(
             onClick = {
                 viewModel.verificarCodigoManual(
-                    context = context,
                     auth = auth,
                     onSuccess = onAuthSuccess
                 )

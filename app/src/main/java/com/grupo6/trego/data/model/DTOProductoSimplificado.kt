@@ -7,5 +7,6 @@ data class DTOProductoSimplificado(
     val precio: Float?,
     val urlImagen: String?,
     val precioOferta: Float?,
-    val ingredientes: List<DTOIngrediente>?
+    val ingredientes: List<DTOIngrediente>?,
+    val descripcion: String? // ver que no rompa el endpoint
 )

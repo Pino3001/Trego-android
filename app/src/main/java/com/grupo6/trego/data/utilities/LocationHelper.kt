@@ -11,6 +11,9 @@ import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import com.grupo6.trego.data.model.DTODireccion
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 sealed class LocationState {
     object Idle : LocationState()
@@ -76,5 +79,30 @@ fun RequestLocation(
                 }
             }
         }
+    }
+}
+
+// Primero, una función de extensión para llamar a Geoapify
+suspend fun reverseGeocode(lat: Double, lon: Double, apiKey: String): DTODireccion? {
+    return try {
+        val url = "https://api.geoapify.com/v1/geocode/reverse?lat=$lat&lon=$lon&apiKey=$apiKey"
+        val response = withContext(Dispatchers.IO) {
+            java.net.URL(url).readText()
+        }
+        val json = org.json.JSONObject(response)
+        val props = json
+            .getJSONArray("features")
+            .getJSONObject(0)
+            .getJSONObject("properties")
+
+        DTODireccion(
+            calle = props.optString("street", null.toString()).takeIf { it != "null" },
+            numero = props.optString("housenumber", "0").toIntOrNull() ?: 0,
+            esquina = null, // Geoapify no devuelve esquina, se puede editar manualmente
+            latitud = lat,
+            longitud = lon
+        )
+    } catch (e: Exception) {
+        null
     }
 }

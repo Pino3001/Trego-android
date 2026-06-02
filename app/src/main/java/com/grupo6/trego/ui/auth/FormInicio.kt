@@ -10,9 +10,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +61,25 @@ fun FormInicio(
     val credentialManager = CredentialManager.create(context)
 // Variable de estado que controla si el proceso está en curso (sirve para mostrar un indicador de carga)
     var isLoading by remember { mutableStateOf(false) }
+
+    // ESTADO PARA LA ALERTA DE ERROR
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    if (errorMessage != null) {
+        AlertDialog(
+            onDismissRequest = { errorMessage = null },
+            icon = { Icon(Icons.Default.Error, contentDescription = null, tint = Color.Red) },
+            title = { Text("Error de Inicio de Sesión", fontWeight = FontWeight.Bold) },
+            text = { Text(errorMessage!!) },
+            confirmButton = {
+                TextButton(onClick = { errorMessage = null }) {
+                    Text("Reintentar", color = Color(0xFFE91E63), fontWeight = FontWeight.Bold)
+                }
+            },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = Color.White
+        )
+    }
 
     fun registrarUsuarioGoogle() {
         val TAG = "GoogleAuthDebug" // 👈 Etiqueta para filtrar en el Logcat
@@ -102,7 +128,6 @@ fun FormInicio(
                             Log.d(TAG, "   👉 $firebaseTokenString")
 
                             viewModel.sendGoogleTokenToBackend(
-                                context = context,
                                 idToken = firebaseTokenString,
                                 onSuccess = {
                                     Log.d(TAG, "🎉 5. El Backend respondió EXITOSAMENTE. Logueado.");
@@ -112,6 +137,7 @@ fun FormInicio(
                                 onError = { mensajeError ->
                                     Log.e(TAG, "❌ Fallo en la respuesta del Backend: $mensajeError")
                                     isLoading = false
+                                    errorMessage = "El servidor no reconoció tu cuenta: $mensajeError"
                                     auth.signOut()
                                 }
                             )
@@ -124,6 +150,7 @@ fun FormInicio(
                 } catch (e: Exception) {
                     // 🔍 LOG 3: Si el selector de Google se cae o se cierra solo, saltará aquí
                     Log.e(TAG, "❌ ERROR CRÍTICO en el proceso de Autenticación: ${e.message}", e)
+                    errorMessage = "Error de conexión: ${e.localizedMessage ?: "No se pudo conectar con Google"}"
                 } finally {
                     isLoading = false
                 }

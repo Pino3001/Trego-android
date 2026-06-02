@@ -1,136 +1,117 @@
 package com.grupo6.trego.ui.menu
 
-
-import androidx.compose.runtime.*
+import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.grupo6.trego.data.model.DTOProducto
 import com.grupo6.trego.data.model.DTORestaurante
+import com.grupo6.trego.data.repository.RestauranteRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlin.collections.List
+import kotlin.collections.distinct
+import kotlin.collections.filter
+import kotlin.collections.listOf
+import kotlin.collections.plus
+import kotlin.collections.sorted
+import kotlin.collections.sortedBy
+import kotlin.collections.sortedByDescending
+
+class MenuViewModel(
+    private val repository: RestauranteRepository
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow<MenuUiState>(MenuUiState.Loading)
+    val uiState: StateFlow<MenuUiState> = _uiState.asStateFlow()
+
+    fun loadMenu(restaurantId: Long) {
+        Log.e("Load", restaurantId.toString())
+        viewModelScope.launch {
+            _uiState.value = MenuUiState.Loading
+            repository.getRestaurantMenu(restaurantId)
+                .onSuccess { restaurante ->
+                    val productos = restaurante.productos ?: emptyList()
+
+                    // Ofertas: productos que tienen el campo oferta != null
+                    val ofertas = productos.filter { it.oferta != null }
+
+                    _uiState.value = if (productos.isEmpty()) {
+                        MenuUiState.SinProductos
+                    } else {
+                        MenuUiState.Success(
+                            restaurante = restaurante,
+                            productosOriginales = productos,
+                            categorias = listOf("Todos") +
+                                    productos.mapNotNull { it.categoria?.name }.distinct().sorted(),
+                            ofertas = ofertas   // ← lista cargada
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.value = MenuUiState.Error(
+                        e.message ?: "Error al cargar el menú"
+                    )
+                }
+        }
+    }
+
+    fun selectCategoria(categoria: String) = updateSuccess {
+        copy(categoriaSeleccionada = categoria)
+    }
+
+    fun resetFiltros() = updateSuccess {
+        copy(categoriaSeleccionada = "Todos", ordenPrecio = OrdenPrecio.NINGUNO)
+    }
+
+    fun showOrdenDialog() = updateSuccess { copy(showOrdenDialog = true) }
+    fun dismissOrdenDialog() = updateSuccess { copy(showOrdenDialog = false) }
+
+    // selectOrden también cierra el dialog
+    fun selectOrden(orden: OrdenPrecio) = updateSuccess {
+        copy(ordenPrecio = orden, showOrdenDialog = false)
+    }
+
+    // Helper privado — evita el cast repetido en cada acción
+    private fun updateSuccess(block: MenuUiState.Success.() -> MenuUiState.Success) {
+        val current = _uiState.value as? MenuUiState.Success ?: return
+        _uiState.value = current.block()
+    }
+}
 
 enum class OrdenPrecio { NINGUNO, MENOR, MAYOR }
 
 sealed class MenuUiState {
     object Loading : MenuUiState()
     object SinProductos : MenuUiState()
-    data class Success(val restaurante: DTORestaurante) : MenuUiState()
     data class Error(val message: String) : MenuUiState()
-}
-
-class MenuViewModel : ViewModel() {
-
-    var uiState by mutableStateOf<MenuUiState>(MenuUiState.Loading)
-        private set
-
-    var categoriaSeleccionada by mutableStateOf("Todos")
-        private set
-
-    var ordenPrecio by mutableStateOf(OrdenPrecio.NINGUNO)
-        private set
-
-    var showOrdenDialog by mutableStateOf(false)
-        private set
-
-    private var todosLosProductos: List<DTOProducto> = emptyList()
-
-    var productosFiltrados by mutableStateOf<List<DTOProducto>>(emptyList())
-        private set
-
-    var ofertas by mutableStateOf<List<DTOProducto>>(emptyList())
-        private set}
-
-/*    val categorias = listOf("Todos", "Bebidas", "Postres", "Ensaladas", "Entradas", "P. Plato")*/
-
-/*    fun cargarMenu(restauranteId: Long) {
-        // TODO: reemplazar con llamada real al backend
-        val restaurante = MockData.restaurantes.find { it.id == restauranteId }
-        if (restaurante == null || restaurante.productos.isNullOrEmpty()) {
-            uiState = MenuUiState.SinProductos
-        } else {
-            todosLosProductos = restaurante.productos
-            ofertas = restaurante.productos.filter { it.tieneOferta }
-            aplicarFiltroYOrden()
-            uiState = MenuUiState.Success(
-                RestaurantDTO(
-                    id = restaurante.id,
-                    nombre = restaurante.nombre,
-                    categoria = restaurante.categoria,
-                    zona = restaurante.zona,
-                    calificacion = restaurante.calificacion,
-                    horarioApertura = restaurante.horarioApertura,
-                    horarioCierre = restaurante.horarioCierre,
-                    abierto = restaurante.abierto,
-                    tieneOfertas = restaurante.tieneOfertas,
-                    productos = restaurante.productos ?: emptyList()
-                )
-            )
-        }
-    }*/
-/*    fun cargarMenu(restauranteId: Long) {
-
-       viewModelScope.launch {
-            uiState = MenuUiState.Loading
-            try {
-                val response = RetrofitClient.restaurantService
-                    .verMenuRestaurante(restauranteId)
-
-                if (response.isSuccessful) {
-                    val body = response.body()
-
-                    if (body == null) {
-                        uiState = MenuUiState.Error("Error al procesar el menú")
-                    } else {
-                        // 💡 AQUÍ ESTÁ EL TRUCO:
-                        // 1. Convertimos a una lista segura inmediatamente.
-                        // 2. Si es nulo, le asignamos una lista vacía.
-                        val productosSeguros = body.productos ?: emptyList()
-
-                        if (productosSeguros.isEmpty()) {
-                            uiState = MenuUiState.SinProductos
-                        } else {
-                            // Ahora productosSeguros NO es nulo, así que no dará error de asignación
-                            todosLosProductos = productosSeguros
-                            ofertas = productosSeguros.filter { it.tieneOferta }
-                            aplicarFiltroYOrden()
-                            uiState = MenuUiState.Success(body)
-                        }
-                    }
+    data class Success(
+        val restaurante: DTORestaurante,
+        val productosOriginales: List<DTOProducto>,   // nunca se toca
+        val categorias: List<String>,
+        val categoriaSeleccionada: String = "Todos",
+        val ordenPrecio: OrdenPrecio = OrdenPrecio.NINGUNO,
+        val showOrdenDialog: Boolean = false,
+        val ofertas: List<DTOProducto> = emptyList() // hasta que implementes ofertas
+    ) : MenuUiState() {
+        // Lista derivada — siempre consistente
+        val productosFiltrados: List<DTOProducto>
+            get() {
+                val filtrados = if (categoriaSeleccionada == "Todos") {
+                    productosOriginales
                 } else {
-                    uiState = MenuUiState.Error("Error ${response.code()}")
+                    productosOriginales.filter {
+                        it.categoria?.name == categoriaSeleccionada
+                    }
                 }
-            } catch (e: Exception) {
-                uiState = MenuUiState.Error(e.message ?: "Error desconocido")
+                return when (ordenPrecio) {
+                    OrdenPrecio.MENOR -> filtrados.sortedBy {
+                        it.precio ?: it.precio
+                    } // Cuando maneje lo de las ofertas aca debe de ir la eleccion entre precio oferta y precio normal, lo mismo abajo
+                    OrdenPrecio.MAYOR -> filtrados.sortedByDescending { it.precio ?: it.precio }
+                    OrdenPrecio.NINGUNO -> filtrados
+                }
             }
-        }
-    }*/
-/*
-    fun onCategoriaSeleccionada(categoria: String) {
-        categoriaSeleccionada = categoria
-        aplicarFiltroYOrden()
     }
-
-    fun onOrdenSeleccionado(orden: OrdenPrecio) {
-        ordenPrecio = orden
-        showOrdenDialog = false
-        aplicarFiltroYOrden()
-    }
-
-    fun onShowOrdenDialog() { showOrdenDialog = true }
-    fun onDismissOrdenDialog() { showOrdenDialog = false }
-
-    private fun aplicarFiltroYOrden() {
-        var resultado = if (categoriaSeleccionada == "Todos") {
-            todosLosProductos
-        } else {
-            todosLosProductos.filter {
-                it.categoria.equals(categoriaSeleccionada, ignoreCase = true)
-            }
-        }
-
-        resultado = when (ordenPrecio) {
-            OrdenPrecio.MENOR -> resultado.sortedBy { it.precioOferta ?: it.precio }
-            OrdenPrecio.MAYOR -> resultado.sortedByDescending { it.precioOferta ?: it.precio }
-            OrdenPrecio.NINGUNO -> resultado
-        }
-
-        productosFiltrados = resultado
-    }
-}*/
+}

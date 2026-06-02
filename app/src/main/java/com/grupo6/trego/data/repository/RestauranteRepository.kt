@@ -6,11 +6,10 @@ import com.grupo6.trego.data.model.DTOProducto
 import com.grupo6.trego.data.model.DTORestaurante
 import com.grupo6.trego.data.model.PageResponse
 import com.grupo6.trego.data.remote.RestaurantApiService
-import com.grupo6.trego.data.remote.RetrofitClient
 
 //Transforma los datos extraidos desde la api
 class RestauranteRepository(
-    private val api: RestaurantApiService = RetrofitClient.restaurantService
+    private val api: RestaurantApiService
 ) {
     // construye un DireccionDTO y lo envia, ver si solo enviar lat y long
     suspend fun getRestaurantsByZone(
@@ -69,24 +68,33 @@ class RestauranteRepository(
         }
     }
 
-    suspend fun getRestaurantMenu(restaurantId: Long): Result<List<DTOProducto>> {
+    suspend fun getRestaurantMenu(restaurantId: Long): Result<DTORestaurante> {
         return try {
-            val response = api.verMenuRestaurante(restaurantId.toInt(), null, null)
+            val response = api.verMenuRestaurante(restaurantId.toInt())
             if (response.isSuccessful) {
                 val body = response.body()
-                when (body) {
-                    is List<*> -> {
-                        // Si es una lista, asumimos que son DTOProducto
-                        @Suppress("UNCHECKED_CAST")
-                        Result.success(body as List<DTOProducto>)
-                    }
+                if (body != null) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception("Respuesta vacía"))
+                }
+            } else {
+                Result.failure(Exception("Error ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
-                    is Map<*, *> -> {
-                        // Si es un mapa con mensaje, es que no hay productos
-                        Result.success(emptyList())
-                    }
-
-                    else -> Result.failure(Exception("Respuesta inesperada"))
+    suspend fun getRestauranteDatos(restaurantId: Long): Result<DTORestaurante> {
+        return try {
+            val response = api.verRestauranteData(restaurantId.toInt())
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception("Respuesta vacía"))
                 }
             } else {
                 Result.failure(Exception("Error ${response.code()}"))
