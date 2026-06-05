@@ -1,7 +1,11 @@
 package com.grupo6.trego.ui.pedidos
 
-import android.app.AlertDialog
+import android.util.Log
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,16 +26,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,13 +46,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.grupo6.trego.data.model.EnumEstadoPedido
 import com.grupo6.trego.data.model.PedidoUiModel
-import com.grupo6.trego.ui.componentes.Activeard
+import com.grupo6.trego.ui.componentes.ActivePedidoCard
 import com.grupo6.trego.ui.componentes.TregoHeader
 import com.grupo6.trego.ui.theme.TregoOrange
 import org.koin.androidx.compose.koinViewModel
@@ -52,47 +62,111 @@ import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PedidoScreen(
-    viewModel: PedidoViewModel = koinViewModel()
-) {
+fun PedidoScreen() {
+    val activity = (LocalContext.current as? ComponentActivity)
+        ?: error("La vista no está alojada en una ComponentActivity")
+    val viewModel: PedidoViewModel = koinViewModel(viewModelStoreOwner = activity)
     val activosState by viewModel.activosState.collectAsState()
     val historialState by viewModel.historialState.collectAsState()
 
     var showHistoryModal by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
+    Log.d("Pedidos", "CarritoScreen ViewModel: $viewModel")
+// Escuchamos el evento
+    LaunchedEffect(Unit) {
+        viewModel.eventFlow.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.cargarPedidos()
+    }
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TregoHeader {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(80.dp),
-                    contentAlignment = Alignment.Center
+                        .height(110.dp)
                 ) {
+                    // Título anclado arriba al centro
                     Text(
-                        "MIS PEDIDOS",
+                        text = "MIS PEDIDOS",
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.5.sp,
                         color = Color.White,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.ExtraBold
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 16.dp)
                     )
+
+                    // Píldora anclada abajo al centro
                     Row(
                         modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(end = 16.dp)
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 10.dp)
+                            .clip(RoundedCornerShape(50.dp))
+                            .background(Color.White.copy(alpha = 0.12f))
+                            .border(
+                                width = 0.5.dp,
+                                color = Color.White.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(50.dp)
+                            )
+                            .padding(horizontal = 14.dp, vertical = 5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Botón para recargar los pedidos activos manualmente
-                        IconButton(onClick = { viewModel.cargarPedidos() }) {
-                            Icon(Icons.Default.Refresh, "Recargar", tint = Color.White)
+                        Row(
+                            modifier = Modifier.clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                showHistoryModal = true
+                                viewModel.cargarHistorial()
+                            },
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.History,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.85f),
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = "Ver historial",
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
                         }
 
-                        // Botón para abrir el historial
-                        IconButton(
-                            onClick = {
-                                showHistoryModal = true
-                                viewModel.cargarHistorial() // Disparamos la carga al abrir
-                            }
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(13.dp)
+                                .background(Color.White.copy(alpha = 0.25f))
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .size(22.dp)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { viewModel.cargarPedidos() },
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.History, "Historial", tint = Color.White)
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Actualizar",
+                                tint = Color.White.copy(alpha = 0.85f),
+                                modifier = Modifier.size(13.dp)
+                            )
                         }
                     }
                 }
@@ -113,10 +187,17 @@ fun PedidoScreen(
                 }
 
                 is PedidoUiState.Error -> {
-                    Text(
-                        state.message,
-                        modifier = Modifier.align(Alignment.Center),
-                        color = Color.Red
+                    AlertDialog(
+                        onDismissRequest = {
+                            viewModel.dismissActivosError()  // vuelve al Success anterior
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { viewModel.dismissActivosError() }) {
+                                Text("Aceptar")
+                            }
+                        },
+                        title = { Text("Error") },
+                        text = { Text(state.message) }
                     )
                 }
 
@@ -137,7 +218,11 @@ fun PedidoScreen(
                                 )
                             }
                             items(state.activos) { pedido ->
-                                Activeard(pedido)
+                                ActivePedidoCard(pedido, onCancelClick = {
+                                    viewModel.cancelarPedido(
+                                        pedido.pedido
+                                    )
+                                })
                             }
                         }
                     }
@@ -171,7 +256,7 @@ fun PedidoScreen(
 
                     is PedidoUiState.Error -> {
                         // Si falla el historial, mostramos un cartelito y cerramos el modal
-                        androidx.compose.material3.AlertDialog(
+                        AlertDialog(
                             onDismissRequest = { showHistoryModal = false },
                             confirmButton = {
                                 TextButton(onClick = { showHistoryModal = false }) {

@@ -1,8 +1,17 @@
 package com.grupo6.trego.ui.carrito
 
+import android.net.Uri
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,7 +50,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,6 +60,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -60,6 +69,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.grupo6.trego.R
 import com.grupo6.trego.ui.carrito.componentes.CarritoItemCard
@@ -67,6 +77,8 @@ import com.grupo6.trego.ui.carrito.componentes.DireccionSelectorModal
 import com.grupo6.trego.ui.carrito.componentes.ProductoDetalleModal
 import com.grupo6.trego.ui.componentes.DialogComponent
 import com.grupo6.trego.ui.componentes.TregoHeader
+import com.grupo6.trego.ui.pedidos.PedidoUiState
+import com.grupo6.trego.ui.pedidos.PedidoViewModel
 import com.grupo6.trego.ui.theme.TregoOrange
 import org.koin.androidx.compose.koinViewModel
 
@@ -74,44 +86,84 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun CarritoScreen(
     navController: NavController,
+    statusDePago: String? = null
 ) {
     val activity = (LocalContext.current as? ComponentActivity)
         ?: error("La vista no está alojada en una ComponentActivity")
+
+    // 🌟 Compartimos ViewModels con la Activity como owner para sincronización total
     val viewModel: CarritoViewModel = koinViewModel(viewModelStoreOwner = activity)
+    val pedidoViewModel: PedidoViewModel = koinViewModel(viewModelStoreOwner = activity)
 
     var mostrarSelectorDireccion by remember { mutableStateOf(false) }
-
-// Estado para mostrar mensajes de error/rechazo
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // ═══ LAUNCHED EFFECT: EL CONTROLADOR DE ESTADOS DE PAGO ═══
-    LaunchedEffect(viewModel.uiState) {
-        when (viewModel.uiState) {
-            is CarritoUiState.PagoExitoso -> {
-                // Si por alguna razón el estado pasa a éxito acá, mandamos a la pantalla final
+    var procesandoPago by remember { mutableStateOf(false) }
+
+    // ═══ PROCESAR RESULTADO DE DEEP LINK (MERCADO PAGO) ═══
+    LaunchedEffect(statusDePago) {
+        Log.d("DeepLink", "Status recibido: $statusDePago")
+        when (statusDePago) {
+            "exito" -> {
+                viewModel.marcarPagoExitoso()
+                procesandoPago = true   // mostramos pantalla de carga
+
+                // Obtenemos la cantidad actual ANTES de esperar
+                val conteoAnterior =
+                    (pedidoViewModel.activosState.value as? PedidoUiState.Success)?.activos?.size
+                        ?: 0
+
+                // Delegamos la espera silenciosa al ViewModel
+                val nuevoPedidoLlego =
+                    pedidoViewModel.esperarNuevoPedido(conteoAnterior = conteoAnterior)
+
+                procesandoPago = false
+
+                if (!nuevoPedidoLlego) {
+                    // Si pasaron los 15 segundos y no llegó, le avisamos antes de cambiar de pantalla
+                    Toast.makeText(
+                        activity,
+                        "Tu pago fue exitoso, pero el pedido está tardando en aparecer. Refresca en unos segundos.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+
+                // Navegamos a pedido (llegue o no a tiempo, es mejor sacarlo del carrito ya pagado)
                 navController.navigate("pedido") {
                     popUpTo("carrito") { inclusive = true }
                 }
-                viewModel.reiniciar()
             }
 
-            is CarritoUiState.PagoRechazado -> {
-                // Mostramos un mensaje flotante de que el pago falló
-                snackbarHostState.showSnackbar("El pago fue rechazado. Por favor, intenta nuevamente.")
+            "rechazado" -> {
+                viewModel.marcarPagoRechazado()
+                snackbarHostState.showSnackbar("El pago fue rechazado. Revisa tus datos.")
             }
 
-            else -> {}
+            "pendiente" -> {
+                viewModel.marcarPagoPendiente()
+                pedidoViewModel.cargarPedidos()
+                navController.navigate("pedido") {
+                    popUpTo("carrito") { inclusive = true }
+                }
+            }
+        }
+    }
+    val estadoDirecciones by viewModel.direccionesState.collectAsStateWithLifecycle()
+    val direccionesList = (estadoDirecciones as? DireccionesState.Cargadas)?.items ?: emptyList()
+
+    LaunchedEffect(mostrarSelectorDireccion) {
+        if (mostrarSelectorDireccion) {
+            viewModel.cargarDirecciones()
         }
     }
 
-    // ─── Modales mejorados ────────────────────────────────────────────────
+    // ─── Modales ─────────────────────────────────────────────────────────
     if (mostrarSelectorDireccion) {
         DireccionSelectorModal(
-            direcciones = viewModel.direcciones,
+            direcciones = direccionesList,
             seleccionada = viewModel.direccionSeleccionada,
             onConfirmar = { viewModel.seleccionarDireccion(it); mostrarSelectorDireccion = false },
-            onDismiss = { mostrarSelectorDireccion = false },
-            geoapifyApiKey = "d8f9a863d62a4f869bb5cac555b14ef3"
+            onDismiss = { mostrarSelectorDireccion = false }
         )
     }
 
@@ -124,22 +176,20 @@ fun CarritoScreen(
         )
     }
 
-    // ─── ALERTAS PROFESIONALES (SUSTITUYEN AlertDialogs simples) ──────────
-
-    // Diálogo de error / validación usando DialogComponent reutilizable
+    // ─── ALERTAS ────────────────────────────────────────────────────────
     var errorDialogMessage by remember { mutableStateOf<String?>(null) }
 
     if (errorDialogMessage != null) {
-        DialogComponent(
-            message = errorDialogMessage!!,
-            onDismiss = { errorDialogMessage = null }
-        )
+        DialogComponent(message = errorDialogMessage!!, onDismiss = { errorDialogMessage = null })
     }
 
-    // El viewModel ahora puede disparar este mensaje
-    LaunchedEffect(viewModel.uiState) {
-        if (viewModel.uiState is CarritoUiState.Error) {
-            errorDialogMessage = (viewModel.uiState as CarritoUiState.Error).mensaje
+    LaunchedEffect(Unit) {
+        viewModel.recargarCarrito()
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.errorEvent.collect { mensaje ->
+            errorDialogMessage = mensaje
         }
     }
 
@@ -168,9 +218,7 @@ fun CarritoScreen(
                         onClick = {
                             val rid = viewModel.currentRestauranteId
                             if (rid != null && rid != 0L) {
-                                navController.navigate("menu/$rid") {
-                                    popUpTo("restaurants") // mantiene el listado en el fondo
-                                }
+                                navController.navigate("menu/$rid") { popUpTo("restaurants") }
                             } else {
                                 navController.popBackStack()
                             }
@@ -193,10 +241,10 @@ fun CarritoScreen(
                     ) {
                         Text(
                             text = "CARRITO",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            letterSpacing = 2.sp,
-                            color = Color.White.copy(alpha = 0.8f)
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.5.sp,
+                            color = Color.White
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
@@ -220,7 +268,7 @@ fun CarritoScreen(
                             IconButton(onClick = { viewModel.limpiarCarrito() }) {
                                 Icon(
                                     imageVector = Icons.Default.Delete,
-                                    contentDescription = "Limpiar carrito",
+                                    contentDescription = "Limpiar",
                                     tint = Color.White,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -237,8 +285,6 @@ fun CarritoScreen(
                 .fillMaxSize()
         ) {
             when (val state = viewModel.uiState) {
-
-                // ─── VACÍO MEJORADO ──────────────────────────────────────────
                 is CarritoUiState.Vacio -> {
                     Column(
                         modifier = Modifier.fillMaxSize(),
@@ -265,46 +311,33 @@ fun CarritoScreen(
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.ExtraBold
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "Parece que aún no has añadido\nnada delicioso a tu pedido.",
-                            textAlign = TextAlign.Center,
-                            color = Color.Gray,
-                            lineHeight = 20.sp
-                        )
                         Spacer(modifier = Modifier.height(32.dp))
                         Button(
                             onClick = { navController.popBackStack() },
                             colors = ButtonDefaults.buttonColors(containerColor = TregoOrange),
-                            shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 32.dp, vertical = 12.dp)
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("Explorar Restaurantes", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
 
-                // ─── CARGADO ──────────────────────────────────────────────────
                 is CarritoUiState.Cargado -> {
                     Column(modifier = Modifier.fillMaxSize()) {
                         LazyColumn(
                             modifier = Modifier.weight(1f),
                             contentPadding = PaddingValues(vertical = 8.dp)
                         ) {
-
                             item {
                                 SelectorDireccionItem(
                                     viewModel = viewModel,
-                                    onAbrirSelector = { mostrarSelectorDireccion = true }
-                                )
+                                    onAbrirSelector = { mostrarSelectorDireccion = true })
                             }
                             item {
                                 Text(
                                     "Lista de Pedidos:",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontSize = 14.sp,
-                                    color = Color.Gray,
-                                    textAlign = TextAlign.Center
+                                    modifier = Modifier.padding(16.dp),
+                                    color = Color.Gray
                                 )
                             }
                             items(state.items) { item ->
@@ -317,8 +350,7 @@ fun CarritoScreen(
                                             item,
                                             delta
                                         )
-                                    }
-                                )
+                                    })
                             }
                         }
                         TotalYBoton(
@@ -329,32 +361,20 @@ fun CarritoScreen(
                     }
                 }
 
-                // ─── CARGANDO ─────────────────────────────────────────────────
                 is CarritoUiState.Cargando -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = TregoOrange)
-                    }
+                    Box(
+                        Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) { CircularProgressIndicator(color = TregoOrange) }
                 }
 
-                // ─── ERROR ────────────────────────────────────────────────────
-                is CarritoUiState.Error -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(state.mensaje, color = MaterialTheme.colorScheme.error)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            TextButton(onClick = { viewModel.reiniciar() }) { Text("Reintentar") }
-                        }
-                    }
-                }
-
-                // ─── PAGO EXITOSO → spinner mientras LaunchedEffect navega ────
                 is CarritoUiState.PagoExitoso -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = TregoOrange)
-                    }
+                    Box(
+                        Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) { CircularProgressIndicator(color = TregoOrange) }
                 }
 
-                // ─── PAGO RECHAZADO → carrito con banner de error ─────────────
                 is CarritoUiState.PagoRechazado -> {
                     Column(modifier = Modifier.fillMaxSize()) {
                         LazyColumn(
@@ -363,18 +383,17 @@ fun CarritoScreen(
                         ) {
                             item {
                                 BannerEstadoPago(
-                                    icono = Icons.Default.Warning,
-                                    tintIcono = MaterialTheme.colorScheme.error,
-                                    colorFondo = Color(0xFFFFEBEE),
-                                    titulo = "Pago rechazado",
-                                    mensaje = "Hubo un problema con tu pago. Revisá tus datos e intentá de nuevo."
+                                    Icons.Default.Warning,
+                                    MaterialTheme.colorScheme.error,
+                                    Color(0xFFFFEBEE),
+                                    "Pago rechazado",
+                                    "Hubo un problema con tu pago."
                                 )
                             }
                             item {
                                 SelectorDireccionItem(
                                     viewModel = viewModel,
-                                    onAbrirSelector = { mostrarSelectorDireccion = true }
-                                )
+                                    onAbrirSelector = { mostrarSelectorDireccion = true })
                             }
                             items(viewModel.items) { item ->
                                 CarritoItemCard(
@@ -386,8 +405,7 @@ fun CarritoScreen(
                                             item,
                                             delta
                                         )
-                                    }
-                                )
+                                    })
                             }
                         }
                         TotalYBoton(
@@ -398,7 +416,6 @@ fun CarritoScreen(
                     }
                 }
 
-                // ─── PAGO PENDIENTE → carrito con banner de advertencia ────────
                 is CarritoUiState.PagoPendiente -> {
                     Column(modifier = Modifier.fillMaxSize()) {
                         LazyColumn(
@@ -407,18 +424,17 @@ fun CarritoScreen(
                         ) {
                             item {
                                 BannerEstadoPago(
-                                    icono = Icons.Default.Info,
-                                    tintIcono = Color(0xFFF57C00),
-                                    colorFondo = Color(0xFFFFF3E0),
-                                    titulo = "Pago pendiente",
-                                    mensaje = "El pedido está en espera hasta que se confirme tu pago."
+                                    Icons.Default.Info,
+                                    Color(0xFFF57C00),
+                                    Color(0xFFFFF3E0),
+                                    "Pago pendiente",
+                                    "El pedido está en espera."
                                 )
                             }
                             item {
                                 SelectorDireccionItem(
                                     viewModel = viewModel,
-                                    onAbrirSelector = { mostrarSelectorDireccion = true }
-                                )
+                                    onAbrirSelector = { mostrarSelectorDireccion = true })
                             }
                             items(viewModel.items) { item ->
                                 CarritoItemCard(
@@ -430,8 +446,7 @@ fun CarritoScreen(
                                             item,
                                             delta
                                         )
-                                    }
-                                )
+                                    })
                             }
                         }
                         TotalYBoton(
@@ -442,7 +457,6 @@ fun CarritoScreen(
                     }
                 }
 
-                // ─── RESTAURANTE CERRADO ──────────────────────────────────────
                 is CarritoUiState.RestauranteCerrado -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -459,18 +473,68 @@ fun CarritoScreen(
                     }
                 }
 
-                // ─── ABRIENDO MERCADO PAGO ────────────────────────────────────
                 is CarritoUiState.AbrirMercadoPago -> {
                     LaunchedEffect(state.url) {
                         val customTabsIntent =
                             androidx.browser.customtabs.CustomTabsIntent.Builder()
-                                .setShowTitle(true)
-                                .build()
-                        customTabsIntent.launchUrl(activity, android.net.Uri.parse(state.url))
+                                .setShowTitle(true).build()
+                        customTabsIntent.launchUrl(activity, Uri.parse(state.url))
                         viewModel.onPreferenciaLanzada()
                     }
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = TregoOrange)
+                    Box(
+                        Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) { CircularProgressIndicator(color = TregoOrange) }
+                }
+            }
+            AnimatedVisibility(
+                visible = procesandoPago,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                // Bloqueamos el botón "Atrás" físico/gestual del teléfono
+                BackHandler(enabled = true) {
+                    // No hacemos nada, obligamos al usuario a esperar
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.7f))
+                        // 🌟 CLAVE: Consumimos los toques para que no traspasen a los botones de abajo
+                        .pointerInput(Unit) { detectTapGestures { } },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.White,
+                        tonalElevation = 8.dp,
+                        modifier = Modifier.padding(32.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator(
+                                color = TregoOrange,
+                                strokeWidth = 4.dp,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Text(
+                                text = "Procesando tu pago",
+                                color = Color.Black,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Por favor, no cierres la aplicación.",
+                                color = Color.Gray,
+                                fontSize = 14.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
@@ -478,9 +542,7 @@ fun CarritoScreen(
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Composables privados de apoyo
-// ═══════════════════════════════════════════════════════════════════════════════
+// ─── COMPOSABLES DE APOYO ───
 
 @Composable
 private fun SelectorDireccionItem(
@@ -505,12 +567,9 @@ private fun SelectorDireccionItem(
                 .padding(horizontal = 16.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.White,
-                contentColor = if (viewModel.direccionSeleccionada != null) Color.Black else TregoOrange,
+                contentColor = if (viewModel.direccionSeleccionada != null) Color.Black else TregoOrange
             ),
-            elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = 6.dp, // Bajé un poco la sombra para que sea más elegante
-                pressedElevation = 2.dp
-            ),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
             shape = RoundedCornerShape(20.dp),
             border = BorderStroke(
                 width = 1.dp,
@@ -523,26 +582,20 @@ private fun SelectorDireccionItem(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp) // Espacio uniforme entre icono y texto
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Icono a la izquierda: Da contexto inmediato
                 Icon(
                     imageVector = Icons.Default.LocationOn,
                     contentDescription = null,
-                    tint = if (viewModel.direccionSeleccionada != null) TregoOrange else TregoOrange
+                    tint = TregoOrange
                 )
-
                 Text(
-                    text = viewModel.direccionSeleccionada?.calle
-                        ?: "Seleccionar dirección de entrega",
+                    text = viewModel.direccionSeleccionada?.calle ?: "Seleccionar dirección",
                     fontWeight = if (viewModel.direccionSeleccionada != null) FontWeight.SemiBold else FontWeight.Medium,
-                    style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
-
-                // Indicador de acción (flecha)
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = "Cambiar",
@@ -613,13 +666,9 @@ private fun BannerEstadoPago(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = colorFondo),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.Top
-        ) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
             Icon(
                 imageVector = icono,
                 contentDescription = null,
@@ -629,7 +678,6 @@ private fun BannerEstadoPago(
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(titulo, fontWeight = FontWeight.SemiBold, color = tintIcono, fontSize = 14.sp)
-                Spacer(Modifier.height(2.dp))
                 Text(
                     mensaje,
                     fontSize = 12.sp,

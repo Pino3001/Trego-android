@@ -43,6 +43,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -59,8 +61,7 @@ fun DireccionSelectorModal(
     direcciones: List<DTODireccion>,
     seleccionada: DTODireccion?,
     onConfirmar: (DTODireccion) -> Unit,
-    onDismiss: () -> Unit,
-    geoapifyApiKey: String
+    onDismiss: () -> Unit
 ) {
     // 0 = Guardadas, 1 = Ubicación actual
     var tabSeleccionada by remember { mutableStateOf(0) }
@@ -85,13 +86,13 @@ fun DireccionSelectorModal(
         if (locationState is LocationState.Available) {
             val loc = locationState as LocationState.Available
             cargandoGeocode = true
-            val dto = reverseGeocode(loc.lat, loc.lon, geoapifyApiKey)
+            val dto = reverseGeocode(loc.lat, loc.lon)
             dto?.let {
                 direccionActual = it
                 calleInput = it.calle ?: ""
-                numeroInput = if (it.numero != 0) it.numero.toString() else ""
+                numeroInput = it.numero?.takeIf { it.isNotBlank() && it != "0" } ?: ""
                 esquinaInput = it.esquina ?: ""
-                apartamentoInput = if (it.apartamento != 0) it.apartamento.toString() else ""
+                apartamentoInput = if (it.apartamento != "") it.apartamento.toString() else ""
             }
             cargandoGeocode = false
         }
@@ -174,11 +175,11 @@ fun DireccionSelectorModal(
                     }
                 } else {
                     direcciones.forEach { dir ->
-                        val esSeleccionada = direccionElegida?.id == dir.id
+                        val esSeleccionada = direccionElegida?.tag == dir.tag
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp)
+                                .padding(vertical = 4.dp, horizontal = 2.dp)
                                 .clickable { direccionElegida = dir },
                             shape = RoundedCornerShape(12.dp),
                             color = if (esSeleccionada) TregoOrange.copy(alpha = 0.1f)
@@ -189,7 +190,7 @@ fun DireccionSelectorModal(
                                 BorderStroke(1.dp, Color.Transparent)
                         ) {
                             Row(
-                                modifier = Modifier.padding(12.dp),
+                                modifier = Modifier.padding(6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
@@ -199,27 +200,12 @@ fun DireccionSelectorModal(
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(Modifier.width(10.dp))
-                                Column {
-                                    Text(
-                                        text = "${dir.calle ?: "Sin calle"} ${dir.numero}",
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 14.sp
-                                    )
-                                    if (!dir.esquina.isNullOrBlank()) {
-                                        Text(
-                                            text = "Esq. ${dir.esquina}",
-                                            fontSize = 12.sp,
-                                            color = Color.Gray
-                                        )
-                                    }
-                                    if (dir.apartamento != 0) {
-                                        Text(
-                                            text = "Apto. ${dir.apartamento}",
-                                            fontSize = 12.sp,
-                                            color = Color.Gray
-                                        )
-                                    }
-                                }
+                                Text(
+                                    text = "${dir.tag ?: "Tag"} Dir: ${dir.calle}",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp
+                                )
+
                                 Spacer(Modifier.weight(1f))
                                 if (esSeleccionada) {
                                     Icon(
@@ -336,7 +322,11 @@ fun DireccionSelectorModal(
                                     label = { Text("Calle") },
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp),
-                                    singleLine = true
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(
+                                        capitalization = KeyboardCapitalization.Words,
+                                        imeAction = ImeAction.Next
+                                    ),
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     OutlinedTextField(
@@ -346,8 +336,13 @@ fun DireccionSelectorModal(
                                         modifier = Modifier.weight(1f),
                                         shape = RoundedCornerShape(12.dp),
                                         singleLine = true,
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                                    )
+                                        keyboardOptions = KeyboardOptions(
+                                            keyboardType = KeyboardType.Number,
+                                            capitalization = KeyboardCapitalization.Words,
+                                            imeAction = ImeAction.Next
+                                        ),
+
+                                        )
                                     OutlinedTextField(
                                         value = apartamentoInput,
                                         onValueChange = { apartamentoInput = it },
@@ -355,7 +350,11 @@ fun DireccionSelectorModal(
                                         modifier = Modifier.weight(1f),
                                         shape = RoundedCornerShape(12.dp),
                                         singleLine = true,
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                        keyboardOptions = KeyboardOptions(
+                                            keyboardType = KeyboardType.Number,
+                                            capitalization = KeyboardCapitalization.Words,
+                                            imeAction = ImeAction.Next
+                                        )
                                     )
                                 }
                                 OutlinedTextField(
@@ -364,7 +363,11 @@ fun DireccionSelectorModal(
                                     label = { Text("Esquina (opcional)") },
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp),
-                                    singleLine = true
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(
+                                        capitalization = KeyboardCapitalization.Words,
+                                        imeAction = ImeAction.Next
+                                    ),
                                 )
 
                             }
@@ -391,8 +394,8 @@ fun DireccionSelectorModal(
                             onConfirmar(
                                 DTODireccion(
                                     calle = calleInput.ifBlank { null },
-                                    numero = numeroInput.toIntOrNull() ?: 0,
-                                    apartamento = apartamentoInput.toIntOrNull() ?: 0,
+                                    numero = numeroInput.ifBlank { null },
+                                    apartamento = apartamentoInput.ifBlank { null },
                                     esquina = esquinaInput.ifBlank { null },
                                     latitud = loc.lat,
                                     longitud = loc.lon

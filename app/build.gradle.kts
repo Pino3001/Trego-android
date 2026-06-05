@@ -83,6 +83,7 @@ dependencies {
     // Imágenes
     implementation(libs.coil.compose)
     implementation(libs.coil.svg)
+    implementation(libs.cloudinary.android)
 
     // Permisos en Compose
     implementation(libs.accompanist.permissions)

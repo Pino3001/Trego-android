@@ -6,6 +6,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -67,9 +68,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun RestaurantListScreen(
     onRestaurantClick: (Long) -> Unit,
-    navController: NavController
 ) {
-    val carritoViewModel: CarritoViewModel = koinViewModel()
     val viewModel: RestauranteViewModel = koinViewModel()
     val context = LocalContext.current
     var showFilterSheet by remember { mutableStateOf(false) }
@@ -125,7 +124,7 @@ fun RestaurantListScreen(
 
                 TregoHeader {
                     Column(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth() .height(110.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
@@ -138,7 +137,7 @@ fun RestaurantListScreen(
                         Image(
                             painter = painterResource(id = R.drawable.tregologo),
                             contentDescription = "Logo Trego",
-                            modifier = Modifier.size(110.dp)
+                            modifier = Modifier.size(80.dp)
                         )
                     }
                 }
@@ -180,10 +179,7 @@ fun RestaurantListScreen(
 
                 LocationState.Idle,
                 LocationState.RequestingPermission -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = TregoOrange
-                    )
+                    LoadingPlaceholder("Obteniendo tu ubicación...")
                 }
 
                 LocationState.PermissionDenied -> {
@@ -218,10 +214,7 @@ fun RestaurantListScreen(
                     if (viewModel.isSearchMode) {
                         when (val searchState = viewModel.searchUiState) {
                             SearchUiState.Loading -> {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.align(Alignment.Center),
-                                    color = TregoOrange
-                                )
+                                LoadingPlaceholder("Buscando restaurantes...")
                             }
 
                             is SearchUiState.Success -> {
@@ -239,10 +232,7 @@ fun RestaurantListScreen(
                         // Resultados de la búsqueda por dirección (searchRestaurantsByAddress)
                         when (addressSearchState) {
                             AddressSearchUiState.Loading -> {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.align(Alignment.Center),
-                                    color = TregoOrange
-                                )
+                                LoadingPlaceholder("Cargando restaurantes cercanos...")
                             }
 
                             is AddressSearchUiState.Success -> {
@@ -282,6 +272,28 @@ fun RestaurantListScreen(
                 }
             }
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Sub-composable: placeholder de carga con mensaje
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun BoxScope.LoadingPlaceholder(message: String) {
+    Column(
+        modifier = Modifier.align(Alignment.Center),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        CircularProgressIndicator(color = TregoOrange)
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text = message,
+            color = Color.Gray,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 

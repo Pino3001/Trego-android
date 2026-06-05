@@ -6,6 +6,7 @@ import coil.ImageLoaderFactory
 import coil.decode.SvgDecoder
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import com.cloudinary.android.MediaManager
 import com.grupo6.trego.di.appModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
@@ -14,6 +15,7 @@ class TregoApplication : Application(), ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        MediaManager.init(this)
         startKoin {
             androidContext(this@TregoApplication)
             modules(appModule)

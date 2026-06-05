@@ -15,6 +15,12 @@ import com.grupo6.trego.data.model.DTOProductoPedido
 import com.grupo6.trego.data.model.DTOProductoSimplificado
 import com.grupo6.trego.data.model.DTORestaurante
 import com.grupo6.trego.data.repository.PedidoRepository
+import com.grupo6.trego.data.repository.UsuarioRepository
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 sealed class CarritoUiState {
@@ -25,14 +31,20 @@ sealed class CarritoUiState {
     object PagoRechazado : CarritoUiState()
     data class Cargado(val items: List<DTOProductoPedido>) : CarritoUiState()
     data class PagoPendiente(val preferencia: DTOPreferenciaMP) : CarritoUiState()
-    data class Error(val mensaje: String) : CarritoUiState()
-
     data class AbrirMercadoPago(val url: String) : CarritoUiState()
+
+}
+
+sealed class DireccionesState {
+    object Cargando : DireccionesState()
+    data class Cargadas(val items: List<DTODireccion>) : DireccionesState()
+    data class Error(val message: String) : DireccionesState()
 }
 
 class CarritoViewModel(
     private val repository: CarritoRepository,
-    private val pedidoRepository: PedidoRepository
+    private val pedidoRepository: PedidoRepository,
+    private val usuarioRepository: UsuarioRepository
 ) : ViewModel() {
 
     var uiState by mutableStateOf<CarritoUiState>(CarritoUiState.Cargando)
@@ -55,30 +67,25 @@ class CarritoViewModel(
     var esEdicion by mutableStateOf(false)
         private set
 
-    val direcciones = listOf(
-        DTODireccion(
-            apartamento = 1,
-            esquina = "",
-            calle = "",
-            numero = 2,
-            latitud = 0.0,
-            longitud = 0.0
-        ),
-        DTODireccion(
-            apartamento = 1,
-            esquina = "",
-            calle = "",
-            numero = 2,
-            latitud = 0.0,
-            longitud = 0.0
-        ),
-    )
+    private val _errorEvent = Channel<String>(Channel.BUFFERED)
+    val errorEvent = _errorEvent.receiveAsFlow()
     private var carritoActual: DTOCarrito? = null
 
     private var preferenciaActual: DTOPreferenciaMP? = null
 
+    private val _direccionesState = MutableStateFlow<DireccionesState>(DireccionesState.Cargando)
+    val direccionesState: StateFlow<DireccionesState> = _direccionesState.asStateFlow()
+
     init {
         cargarCarrito()
+    }
+
+    fun recargarCarrito() {
+        cargarCarrito()
+    }
+
+    private fun emitirError(mensaje: String) {
+        viewModelScope.launch { _errorEvent.send(mensaje) }
     }
 
     // Carga el carrito que tiene el backend en el viewModel
@@ -99,8 +106,22 @@ class CarritoViewModel(
                     actualizarEstado()
                 }
                 .onFailure { e ->
-                    uiState = CarritoUiState.Error(e.message ?: "Error al cargar carrito")
+                    emitirError("Error al cargar carrito")
                 }
+        }
+    }
+
+    fun cargarDirecciones() {
+        viewModelScope.launch {
+            _direccionesState.value = DireccionesState.Cargando
+            val result = usuarioRepository.obtenerDirecciones()
+            if (result.isSuccess) {
+                val direcciones = result.getOrNull() ?: emptyList()
+                _direccionesState.value = DireccionesState.Cargadas(direcciones)
+            } else {
+                val error = result.exceptionOrNull()
+                _direccionesState.value = DireccionesState.Error(error?.message ?: "Error desconocido")
+            }
         }
     }
 
@@ -145,7 +166,7 @@ class CarritoViewModel(
                         actualizarEstado()
                     }
                     .onFailure { e ->
-                        uiState = CarritoUiState.Error(e.message ?: "Error al modificar producto")
+                        emitirError("Error al modificar producto")
                         cargarCarrito() // refrescar por si hay inconsistencia
                     }
             } else {
@@ -158,7 +179,7 @@ class CarritoViewModel(
                         actualizarEstado()
                     }
                     .onFailure { e ->
-                        uiState = CarritoUiState.Error(e.message ?: "Error al agregar producto")
+                        emitirError("Error al agregar producto")
                         cargarCarrito()
                     }
             }
@@ -214,7 +235,7 @@ class CarritoViewModel(
                     actualizarEstado()
                 }
                 .onFailure {
-                    uiState = CarritoUiState.Error(it.message ?: "Error al actualizar cantidad")
+                    emitirError("Error al actualizar cantidad")
                 }
         }
     }
@@ -251,7 +272,7 @@ class CarritoViewModel(
                     actualizarEstado()
                 }
                 .onFailure {
-                    uiState = CarritoUiState.Error(it.message ?: "Error al eliminar producto")
+                    emitirError("Error al eliminar producto")
                 }
         }
     }
@@ -265,7 +286,7 @@ class CarritoViewModel(
                     uiState = CarritoUiState.Vacio
                 }
                 .onFailure {
-                    uiState = CarritoUiState.Error(it.message ?: "Error al limpiar carrito")
+                    emitirError("Error al limpiar carrito")
                 }
         }
     }
@@ -303,19 +324,6 @@ class CarritoViewModel(
     fun seleccionarDireccion(direccion: DTODireccion) {
         direccionSeleccionada = direccion
     }
-
-    fun usarUbicacionActual() {
-        direccionSeleccionada =
-            DTODireccion(
-                apartamento = 1,
-                esquina = "",
-                calle = "",
-                numero = 2,
-                latitud = 0.0,
-                longitud = 0.0
-            )
-    }
-
     fun reiniciar() {
         _items.clear()
         direccionSeleccionada = null
@@ -335,17 +343,17 @@ class CarritoViewModel(
     fun confirmarPedido() {
         // Validaciones previas
         if (_items.isEmpty()) {
-            uiState = CarritoUiState.Error("El carrito está vacío")
+            emitirError("El carrito está vacío")
             return
         }
         val direccion = direccionSeleccionada
         if (direccion == null) {
-            uiState = CarritoUiState.Error("Debe seleccionar una dirección de entrega")
+            emitirError("Debe seleccionar una dirección de entrega")
             return
         }
         val idRest = restauranteId
         if (idRest == null) {
-            uiState = CarritoUiState.Error("Restaurante no identificado")
+            emitirError("Restaurante no identificado")
             return
         }
 
@@ -360,7 +368,7 @@ class CarritoViewModel(
                     )
                 }
                 .onFailure { e ->
-                    uiState = CarritoUiState.Error(e.message ?: "Error al confirmar pedido")
+                    emitirError("Error al confirmar pedido")
                 }
         }
     }

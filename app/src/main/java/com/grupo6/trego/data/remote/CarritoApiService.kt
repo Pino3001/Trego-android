@@ -2,6 +2,7 @@ package com.grupo6.trego.data.remote
 
 import com.grupo6.trego.data.model.DTOCarrito
 import com.grupo6.trego.data.model.DTOProductoPedido
+import com.grupo6.trego.data.model.DTOSubCategoria
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -29,5 +30,6 @@ interface CarritoApiService {
 
     @DELETE("carrito/items")
     suspend fun limpiarItemsCarrito(): Response<DTOCarrito>
+
 
 }

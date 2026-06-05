@@ -45,6 +45,8 @@ class MenuViewModel(
                             productosOriginales = productos,
                             categorias = listOf("Todos") +
                                     productos.mapNotNull { it.categoria?.name }.distinct().sorted(),
+                            subcategorias = listOf("Todos") +
+                                    productos.mapNotNull { it.subcategoria?.nombre }.distinct().sorted(),
                             ofertas = ofertas   // ← lista cargada
                         )
                     }
@@ -58,11 +60,19 @@ class MenuViewModel(
     }
 
     fun selectCategoria(categoria: String) = updateSuccess {
-        copy(categoriaSeleccionada = categoria)
+        copy(categoriaSeleccionada = categoria, subcategoriaSeleccionada = "Todos")
+    }
+
+    fun selectSubcategoria(subcategoria: String) = updateSuccess {
+        copy(subcategoriaSeleccionada = subcategoria)
     }
 
     fun resetFiltros() = updateSuccess {
-        copy(categoriaSeleccionada = "Todos", ordenPrecio = OrdenPrecio.NINGUNO)
+        copy(
+            categoriaSeleccionada = "Todos",
+            subcategoriaSeleccionada = "Todos",
+            ordenPrecio = OrdenPrecio.NINGUNO
+        )
     }
 
     fun showOrdenDialog() = updateSuccess { copy(showOrdenDialog = true) }
@@ -91,6 +101,8 @@ sealed class MenuUiState {
         val productosOriginales: List<DTOProducto>,   // nunca se toca
         val categorias: List<String>,
         val categoriaSeleccionada: String = "Todos",
+        val subcategorias: List<String> = emptyList(),
+        val subcategoriaSeleccionada: String = "Todos",
         val ordenPrecio: OrdenPrecio = OrdenPrecio.NINGUNO,
         val showOrdenDialog: Boolean = false,
         val ofertas: List<DTOProducto> = emptyList() // hasta que implementes ofertas
@@ -98,18 +110,27 @@ sealed class MenuUiState {
         // Lista derivada — siempre consistente
         val productosFiltrados: List<DTOProducto>
             get() {
-                val filtrados = if (categoriaSeleccionada == "Todos") {
+                var filtrados = if (categoriaSeleccionada == "Todos") {
                     productosOriginales
                 } else {
                     productosOriginales.filter {
                         it.categoria?.name == categoriaSeleccionada
                     }
                 }
+
+                if (subcategoriaSeleccionada != "Todos") {
+                    filtrados = filtrados.filter {
+                        it.subcategoria?.nombre == subcategoriaSeleccionada
+                    }
+                }
+
                 return when (ordenPrecio) {
                     OrdenPrecio.MENOR -> filtrados.sortedBy {
-                        it.precio ?: it.precio
-                    } // Cuando maneje lo de las ofertas aca debe de ir la eleccion entre precio oferta y precio normal, lo mismo abajo
-                    OrdenPrecio.MAYOR -> filtrados.sortedByDescending { it.precio ?: it.precio }
+                        it.calcularPrecioConDescuento()
+                    }
+                    OrdenPrecio.MAYOR -> filtrados.sortedByDescending {
+                        it.calcularPrecioConDescuento()
+                    }
                     OrdenPrecio.NINGUNO -> filtrados
                 }
             }

@@ -14,15 +14,15 @@ import com.grupo6.trego.ui.theme.TregoOrange
 @Composable
 fun TregoHeader(
     modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit // <--- Slot dinámico
+    content: @Composable ColumnScope.() -> Unit
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .statusBarsPadding() // Maneja el notch/barra de estado del celular
+            .statusBarsPadding()
             .background(TregoOrange)
-            .padding(bottom = 12.dp) // Un padding base inferior
+            .padding(bottom = 14.dp) // ← un solo lugar para controlarlo
     ) {
-        content() // Aquí se pintará lo que cada página decida
+        content()
     }
 }

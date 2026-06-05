@@ -15,25 +15,29 @@ class AuthInterceptor(
         val originalRequest = chain.request()
         val requestBuilder = originalRequest.newBuilder()
 
+        val token = tokenManager.getToken()
+        
         // Inyectar token si existe
-        tokenManager.getToken()?.let { token ->
-            requestBuilder.addHeader("Authorization", "Bearer $token")
+        token?.let {
+            requestBuilder.addHeader("Authorization", "Bearer $it")
         }
 
         val response = chain.proceed(requestBuilder.build())
 
-        // 401 = No autorizado, 403 = Prohibido (común en JWT expirados)
+        // 401 = No autorizado, 403 = Prohibido
         if (response.code == 401 || response.code == 403) {
             
-            // 1. Limpiar datos locales
-            tokenManager.clearToken()
-            Firebase.auth.signOut() 
+            // Solo redirigimos si realmente intentamos usar un token que falló.
+            // Si 'token' era null, el 401 es porque la UI llamó a una ruta protegida sin estar logueado.
+            if (token != null) {
+                tokenManager.clearToken()
+                Firebase.auth.signOut() 
 
-            // 2. Redirigir al Login de forma limpia
-            val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                }
+                context.startActivity(intent)
             }
-            context.startActivity(intent)
         }
 
         return response

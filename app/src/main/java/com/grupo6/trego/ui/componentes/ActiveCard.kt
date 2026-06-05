@@ -69,7 +69,7 @@ fun getEstadoPedidoColors(estado: EnumEstadoPedido): BadgeColors = when (estado)
 val timeFormatter: DateTimeFormatter? = DateTimeFormatter.ofPattern("HH:mm")
 
 @Composable
-fun Activeard(
+fun ActivePedidoCard(
     order: PedidoUiModel,
     onPhoneClick: () -> Unit = {},
     onCancelClick: () -> Unit = {},

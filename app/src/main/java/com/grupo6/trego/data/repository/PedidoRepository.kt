@@ -49,4 +49,26 @@ class PedidoRepository(private val api: PedidoApiService) {
             Result.failure(e)
         }
     }
+
+    suspend fun cancelarPedido(pedido: DTOPedido): Result<DTOPedido> {
+        return try {
+            val response = api.cancelarPedido(pedido)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null) {
+                    Result.success(body)
+                } else {
+                    // Caso donde el servidor responde OK pero el cuerpo está vacío
+                    Result.failure(Exception("Respuesta vacía del servidor"))
+                }
+            } else {
+                // Manejo de errores HTTP (404, 500, etc)
+                Result.failure(Exception("Error ${response.code()}: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            // Manejo de errores de red (sin internet, timeout, etc)
+            Result.failure(e)
+        }
+    }
 }

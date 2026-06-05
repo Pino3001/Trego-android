@@ -12,6 +12,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.grupo6.trego.data.model.DTODireccion
+import com.grupo6.trego.data.model.ResultadoGeoapify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -82,9 +83,10 @@ fun RequestLocation(
     }
 }
 
-// Primero, una función de extensión para llamar a Geoapify
-suspend fun reverseGeocode(lat: Double, lon: Double, apiKey: String): DTODireccion? {
+// Función de extensión para llamar a Geoapify
+suspend fun reverseGeocode(lat: Double, lon: Double): DTODireccion? {
     return try {
+        val apiKey = "d8f9a863d62a4f869bb5cac555b14ef3"
         val url = "https://api.geoapify.com/v1/geocode/reverse?lat=$lat&lon=$lon&apiKey=$apiKey"
         val response = withContext(Dispatchers.IO) {
             java.net.URL(url).readText()
@@ -97,7 +99,7 @@ suspend fun reverseGeocode(lat: Double, lon: Double, apiKey: String): DTODirecci
 
         DTODireccion(
             calle = props.optString("street", null.toString()).takeIf { it != "null" },
-            numero = props.optString("housenumber", "0").toIntOrNull() ?: 0,
+            numero = props.optString("housenumber", ""),
             esquina = null, // Geoapify no devuelve esquina, se puede editar manualmente
             latitud = lat,
             longitud = lon
@@ -105,4 +107,26 @@ suspend fun reverseGeocode(lat: Double, lon: Double, apiKey: String): DTODirecci
     } catch (e: Exception) {
         null
     }
+}
+
+suspend fun autocompletarDireccion(query: String): List<ResultadoGeoapify> {
+    return try {
+        val apiKey = "d8f9a863d62a4f869bb5cac555b14ef3"
+        val q = java.net.URLEncoder.encode(query, "UTF-8")
+        val url = "https://api.geoapify.com/v1/geocode/autocomplete?text=$q&lang=es&limit=5&apiKey=$apiKey"
+        val response = withContext(Dispatchers.IO) { java.net.URL(url).readText() }
+        val features = org.json.JSONObject(response).getJSONArray("features")
+        (0 until features.length()).map { i ->
+            val props = features.getJSONObject(i).getJSONObject("properties")
+            ResultadoGeoapify(
+                descripcion = props.optString("formatted", ""),
+                calle = props.optString("street").takeIf { it.isNotEmpty() && it != "null" },
+                numero = props.optString("housenumber")
+                    .takeIf { it.isNotEmpty() && it != "null" },
+                ciudad = props.optString("city").takeIf { it.isNotEmpty() && it != "null" },
+                latitud = props.optDouble("lat", 0.0),
+                longitud = props.optDouble("lon", 0.0)
+            )
+        }
+    } catch (e: Exception) { emptyList() }
 }

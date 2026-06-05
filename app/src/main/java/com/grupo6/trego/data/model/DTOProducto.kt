@@ -15,7 +15,8 @@ data class DTOProducto(
     val plato: PlatoDTO?,
     val articulo: ArticuloDTO?,
     val combo: ComboDTO?,
-    val oferta: DTOOferta? = null
+    val oferta: DTOOferta? = null,
+    val subcategoria: DTOSubCategoria? = null
 ){
     fun toSimplificado(): DTOProductoSimplificado {
 
@@ -50,7 +51,4 @@ enum class EnumTipoProducto {
     Plato, Articulo, Combo
 }
 
-enum class EnumCategoriaProducto {
-    Plato, Articulo, Combo
-}
 

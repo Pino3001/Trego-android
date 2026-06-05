@@ -20,4 +20,9 @@ interface PedidoApiService {
 
     @GET("pedido/misPedidos")
     suspend fun obtenerPedidosHistorial(): Response<List<DTOPedido>>
+
+    @POST("pedido/reembolsar")
+    suspend fun cancelarPedido(
+        @Body request: DTOPedido
+    ): Response<DTOPedido>
 }
