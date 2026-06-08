@@ -1,5 +1,6 @@
 package com.grupo6.trego.data.remote
 
+import com.grupo6.trego.data.model.DTOCrearReclamoRequest
 import com.grupo6.trego.data.model.DTODireccion
 import com.grupo6.trego.data.model.DTOPedido
 import com.grupo6.trego.data.model.DTOPreferenciaMP
@@ -25,4 +26,8 @@ interface PedidoApiService {
     suspend fun cancelarPedido(
         @Body request: DTOPedido
     ): Response<DTOPedido>
+
+    @POST("reclamos")
+    suspend fun crearReclamo(@Body request: DTOCrearReclamoRequest): Response<Unit>
+
 }

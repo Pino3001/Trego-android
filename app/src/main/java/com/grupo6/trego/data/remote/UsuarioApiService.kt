@@ -4,6 +4,7 @@ import com.grupo6.trego.data.model.DTOCliente
 import com.grupo6.trego.data.model.DTODireccion
 import com.grupo6.trego.data.model.DTOFirma
 import com.grupo6.trego.data.model.DTOUsuario
+import com.grupo6.trego.data.model.FcmTokenRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -40,4 +41,9 @@ interface UsuarioApiService {
         @Query("nombreArchivo") nombreArchivo: String,
         @Query("tipo") tipo: String
     ): Response<DTOFirma>
+
+    @PUT("clientes/fcm-token")
+    suspend fun renovarTockenFcm(
+        @Body request: FcmTokenRequest
+    ): Response<Unit>
 }

@@ -29,6 +29,7 @@ import com.grupo6.trego.ui.auth.PhoneAuthScreen
 import com.grupo6.trego.ui.carrito.CarritoScreen
 import com.grupo6.trego.ui.carrito.CarritoViewModel
 import com.grupo6.trego.ui.menu.MenuScreen
+import com.grupo6.trego.ui.pedidos.HistorialScreen
 import com.grupo6.trego.ui.pedidos.PedidoScreen
 import com.grupo6.trego.ui.pedidos.PedidoUiState
 import com.grupo6.trego.ui.pedidos.PedidoViewModel
@@ -154,7 +155,7 @@ fun AppNavigation(pendingPaymentStatus: MutableStateFlow<String?> = MutableState
                 if (user == null) {
                     LaunchedEffect(Unit) { navController.navigate("login") { popUpTo(0) } }
                 } else {
-                    PedidoScreen()
+                    PedidoScreen(navController = navController)
                 }
             }
 
@@ -164,6 +165,13 @@ fun AppNavigation(pendingPaymentStatus: MutableStateFlow<String?> = MutableState
                 } else {
                     PerfilScreen(onLogout = { auth.signOut() })
                 }
+            }
+
+            composable("historial") {
+                HistorialScreen(
+                    viewModel = pedidoViewModel, // Pásale tu viewmodel inyectado
+                    navController = navController
+                )
             }
         }
     }

@@ -11,7 +11,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import com.google.firebase.messaging.FirebaseMessaging
 import com.grupo6.trego.ui.theme.TregoTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -28,15 +27,10 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val launcher = registerForActivityResult(
                 ActivityResultContracts.RequestPermission()
-            ) { isGranted -> }
-            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-
-        // Obtener el Token FCM
-        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                Log.d("FCM_POC", "TU TOKEN ACTUAL ES: ${task.result}")
+            ) { isGranted ->
+                // Ver que hacer si el usuario rechaza las notificaciones
             }
+            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
 
         setContent {

@@ -1,6 +1,7 @@
 package com.grupo6.trego.data.repository
 
 import android.util.Log
+import com.grupo6.trego.data.model.DTOCrearReclamoRequest
 import com.grupo6.trego.data.model.DTODireccion
 import com.grupo6.trego.data.model.DTOPedido
 import com.grupo6.trego.data.model.DTOPreferenciaMP
@@ -37,13 +38,14 @@ class PedidoRepository(private val api: PedidoApiService) {
             Result.failure(e)
         }
     }
+
     suspend fun obtenerPedidosHistorial(): Result<List<DTOPedido>> {
         return try {
-            val response = api.obtenerPedidosCliente()
+            val response = api.obtenerPedidosHistorial()
             if (response.isSuccessful) {
                 Result.success(response.body() ?: emptyList())
             } else {
-                Result.failure(Exception("Error al obtener pedidos: ${response.code()}"))
+                Result.failure(Exception("Error al obtener historial: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -68,6 +70,22 @@ class PedidoRepository(private val api: PedidoApiService) {
             }
         } catch (e: Exception) {
             // Manejo de errores de red (sin internet, timeout, etc)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun realizarReclamo(reclamo: DTOCrearReclamoRequest): Result<Unit> {
+        return try {
+            val response = api.crearReclamo(reclamo)
+
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else if (response.code() == 409) {
+                Result.failure(Exception("Este pedido ya posee un reclamo registrado."))
+            } else {
+                Result.failure(Exception("Error ${response.code()}: ${response.message()}"))
+            }
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }

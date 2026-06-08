@@ -86,6 +86,9 @@ class RestauranteViewModel(
     var isAddressSearchMode by mutableStateOf(false)
         private set
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
     // --- Ubicación y paginación ---
 
     private val _currentLocation = MutableStateFlow<Pair<Double, Double>?>(null)
@@ -104,6 +107,16 @@ class RestauranteViewModel(
             ).flow
         }
 
+    fun refresh() {
+        if (isSearchMode) {
+            onSearchSubmit()
+        } else if (isAddressSearchMode) {
+            _currentLocation.value?.let { (lat, lon) ->
+                searchRestaurantsByAddress(DTODireccion(latitud = lat, longitud = lon))
+            }
+        }
+    }
+
     /**
      * Llama al repositorio para obtener restaurantes que cubren la dirección dada.
      * @param direccion Objeto DTODireccion creado desde la UI (ej. con geocodificación o entrada manual)
@@ -111,16 +124,21 @@ class RestauranteViewModel(
     fun searchRestaurantsByAddress(direccion: DTODireccion) {
         isAddressSearchMode = true
         viewModelScope.launch {
+            _isRefreshing.value = true
             addressSearchUiState = AddressSearchUiState.Loading
-            repository.getRestaurantsByAddress(direccion)
-                .onSuccess { list ->
-                    addressSearchUiState = if (list.isEmpty()) AddressSearchUiState.Empty
-                    else AddressSearchUiState.Success(list)
-                }
-                .onFailure { e ->
-                    addressSearchUiState =
-                        AddressSearchUiState.Error(e.message ?: "Error al buscar por dirección")
-                }
+            try {
+                repository.getRestaurantsByAddress(direccion)
+                    .onSuccess { list ->
+                        addressSearchUiState = if (list.isEmpty()) AddressSearchUiState.Empty
+                        else AddressSearchUiState.Success(list)
+                    }
+                    .onFailure { e ->
+                        addressSearchUiState =
+                            AddressSearchUiState.Error(e.message ?: "Error al buscar por dirección")
+                    }
+            } finally {
+                _isRefreshing.value = false
+            }
         }
     }
 
@@ -174,15 +192,20 @@ class RestauranteViewModel(
         if (searchQuery.isBlank()) return
         isSearchMode = true
         viewModelScope.launch {
+            _isRefreshing.value = true
             searchUiState = SearchUiState.Loading
-            repository.searchRestaurantsByName(searchQuery)
-                .onSuccess { list ->
-                    searchUiState = if (list.isEmpty()) SearchUiState.Empty
-                    else SearchUiState.Success(list)
-                }
-                .onFailure { e ->
-                    searchUiState = SearchUiState.Error(e.message ?: "Error desconocido")
-                }
+            try {
+                repository.searchRestaurantsByName(searchQuery)
+                    .onSuccess { list ->
+                        searchUiState = if (list.isEmpty()) SearchUiState.Empty
+                        else SearchUiState.Success(list)
+                    }
+                    .onFailure { e ->
+                        searchUiState = SearchUiState.Error(e.message ?: "Error desconocido")
+                    }
+            } finally {
+                _isRefreshing.value = false
+            }
         }
     }
 

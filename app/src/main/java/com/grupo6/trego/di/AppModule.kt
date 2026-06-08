@@ -2,6 +2,7 @@ package com.grupo6.trego.di
 
 import CarritoRepository
 import com.google.gson.GsonBuilder
+import com.grupo6.trego.data.notificaciones.PushNotificationManager
 import com.grupo6.trego.data.remote.AuthApiService
 import com.grupo6.trego.data.remote.CarritoApiService
 import com.grupo6.trego.data.remote.PedidoApiService
@@ -15,7 +16,7 @@ import com.grupo6.trego.data.utilities.AuthInterceptor
 import com.grupo6.trego.data.utilities.LocalDateTimeAdapter
 import com.grupo6.trego.data.utilities.LocalTimeAdapter
 import com.grupo6.trego.data.utilities.TokenManager
-import com.grupo6.trego.ui.auth.PhoneAuthViewModel
+import com.grupo6.trego.ui.auth.AuthViewModel
 import com.grupo6.trego.ui.carrito.CarritoViewModel
 import com.grupo6.trego.ui.menu.MenuViewModel
 import com.grupo6.trego.ui.pedidos.PedidoViewModel
@@ -79,13 +80,14 @@ val appModule = module {
     single { PedidoRepository(get()) }
     single { UsuarioRepository(get()) }
     single { CloudinaryRepository(get(), get()) }
+    single { PushNotificationManager() }
 
     // ViewModels
     viewModel { RestauranteViewModel(get()) }
     viewModel { MenuViewModel(get()) }
     viewModel { CarritoViewModel(get(), get(), get()) }
-    viewModel { PhoneAuthViewModel(get(), get()) }  // AuthApiService + TokenManager
-    viewModel { PedidoViewModel(get(), get()) }
+    viewModel { AuthViewModel(get(), get(), get()) }
+    viewModel { PedidoViewModel(get(), get(), get()) }
     viewModel { PerfilViewModel(get(), get()) }
 
 }

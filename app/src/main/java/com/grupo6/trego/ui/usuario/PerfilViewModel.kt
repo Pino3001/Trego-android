@@ -12,9 +12,11 @@ import com.grupo6.trego.data.model.toDTOCliente
 import com.grupo6.trego.data.repository.CloudinaryRepository
 import com.grupo6.trego.data.repository.UsuarioRepository
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -32,6 +34,9 @@ class PerfilViewModel(
     private val _state = MutableStateFlow<PerfilUiState>(PerfilUiState.Loading)
     private var ultimoExito: PerfilUiState.Success? = null
     val state: StateFlow<PerfilUiState> = _state.asStateFlow()
+
+    private val _eventChannel = Channel<String>()
+    val eventFlow = _eventChannel.receiveAsFlow()
 
     // Estado local para la dirección seleccionada (esto no afecta al perfil)
     var direccionSeleccionada by mutableStateOf<DTODireccion?>(null)
@@ -90,30 +95,35 @@ class PerfilViewModel(
                 if (resultado.isSuccess) {
                     clienteParaActualizar = cliente.copy(urlImagen = resultado.getOrThrow())
                 } else {
-                    _state.value = PerfilUiState.Error(
-                        resultado.exceptionOrNull()?.message ?: "Error al subir imagen"
-                    )
+                    _eventChannel.send(resultado.exceptionOrNull()?.message ?: "Error al subir imagen")
+                    cargarPerfil()
                     return@launch
                 }
             }
             repository.actualizarPerfil(clienteParaActualizar.toDTOCliente())
                 .onSuccess {
+                    _eventChannel.send("Perfil actualizado con éxito")
                     cargarPerfil()
                 }
                 .onFailure { error ->
-                    _state.value = PerfilUiState.Error(error.message ?: "Error al actualizar perfil")
+                    _eventChannel.send(error.message ?: "Error al actualizar perfil")
+                    cargarPerfil() // Recargamos para limpiar el loading y volver al éxito anterior
                 }
         }
     }
 
-    // ──── Agregar dirección (optimista + recarga completa) ────
+    // ──── Agregar dirección ────
     fun agregarDireccion(direccion: DTODireccion) {
         viewModelScope.launch {
             try {
                 repository.agregarDireccion(direccion)
-                    .onSuccess { cargarPerfil() }
+                    .onSuccess {
+                        _eventChannel.send("Dirección agregada correctamente")
+                        cargarPerfil()
+                    }
                     .onFailure { error ->
-                        _state.value = PerfilUiState.Error(error.message ?: "Error al agregar dirección")
+                        _eventChannel.send(error.message ?: "Error al agregar dirección")
+                        cargarPerfil()
                     }
             } catch (e: Exception) {
                 _state.value = PerfilUiState.Error("Excepción al agregar: ${e.message}")
@@ -126,9 +136,13 @@ class PerfilViewModel(
         viewModelScope.launch {
             try {
                 repository.actualizarDireccion(tagModificar, direccion)
-                    .onSuccess { cargarPerfil() }
+                    .onSuccess {
+                        _eventChannel.send("Dirección actualizada correctamente")
+                        cargarPerfil()
+                    }
                     .onFailure { error ->
-                        _state.value = PerfilUiState.Error(error.message ?: "Error al actualizar dirección")
+                        _eventChannel.send(error.message ?: "Error al actualizar dirección")
+                        cargarPerfil()
                     }
             } catch (e: Exception) {
                 _state.value = PerfilUiState.Error("Excepción al actualizar: ${e.message}")

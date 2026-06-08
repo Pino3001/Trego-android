@@ -1,8 +1,9 @@
 package com.grupo6.trego.data.remote
 
+import com.grupo6.trego.data.model.DTOComentario
 import com.grupo6.trego.data.model.DTODireccion
-import com.grupo6.trego.data.model.PageResponse
 import com.grupo6.trego.data.model.DTORestaurante
+import com.grupo6.trego.data.model.PageResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -16,7 +17,7 @@ interface RestaurantApiService {
     @POST("restaurantes/listarXdirreccion")
     suspend fun listarRestaurantesPorDireccion(
         @Body direccion: DTODireccion
-    ): List<DTORestaurante>
+    ): Response<List<DTORestaurante>>
 
     @GET("pedido/Listar")
     suspend fun listarRestaurantesPorZona(
@@ -46,4 +47,13 @@ interface RestaurantApiService {
         @Path("id") id: String
     ): Response<DTORestaurante>
 
+    @GET("restaurantes/comentarios/listar")
+    suspend fun listarComentarios(
+        @Query("idRestaurante") idRestaurante: Int
+    ): Response<List<DTOComentario>>
+
+    @POST("restaurantes/comentarios/agregar")
+    suspend fun crearComentario(
+        @Body request: DTOComentario
+    ): Response<DTOComentario>
 }

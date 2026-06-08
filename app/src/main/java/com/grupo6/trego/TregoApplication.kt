@@ -1,6 +1,10 @@
 package com.grupo6.trego
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.os.Build
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.decode.SvgDecoder
@@ -19,6 +23,44 @@ class TregoApplication : Application(), ImageLoaderFactory {
         startKoin {
             androidContext(this@TregoApplication)
             modules(appModule)
+        }
+        // Llamar a la función para crear el canal de notificaciones al iniciar la app
+        createNotificationChannel()
+    }
+
+    // Función para crear el Notification Channel
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channelId = "trego_default_channel" // Este ID es importante
+            val channelName = "Notificaciones Generales"
+            val descriptionText = "Canal para alertas y mensajes de Trego"
+            val importance = NotificationManager.IMPORTANCE_HIGH
+
+            val channel = NotificationChannel(channelId, channelName, importance).apply {
+                description = descriptionText
+            }
+
+            val notificationManager: NotificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun crearCanalDeNotificaciones() {
+        // Los canales solo son obligatorios a partir de Android 8.0 (API 26)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channelId = "trego_default_channel" // ⚠️ DEBE COINCIDIR EXACTAMENTE CON EL BACKEND
+            val name = "Notificaciones de Pedidos"
+            val descriptionText = "Canal principal para avisos de Trego"
+            val importance = NotificationManager.IMPORTANCE_HIGH // Obligatorio para el banner flotante
+
+            val channel = NotificationChannel(channelId, name, importance).apply {
+                description = descriptionText
+            }
+
+            // Registramos el canal en el sistema Android
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
         }
     }
 

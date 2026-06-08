@@ -16,7 +16,7 @@ data class DTOProducto(
     val articulo: ArticuloDTO?,
     val combo: ComboDTO?,
     val oferta: DTOOferta? = null,
-    val subcategoria: DTOSubCategoria? = null
+    val subCategoria: DTOSubCategoria? = null
 ){
     fun toSimplificado(): DTOProductoSimplificado {
 

@@ -35,6 +35,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -77,7 +79,7 @@ import com.grupo6.trego.ui.carrito.componentes.DireccionSelectorModal
 import com.grupo6.trego.ui.carrito.componentes.ProductoDetalleModal
 import com.grupo6.trego.ui.componentes.DialogComponent
 import com.grupo6.trego.ui.componentes.TregoHeader
-import com.grupo6.trego.ui.pedidos.PedidoUiState
+import com.grupo6.trego.ui.componentes.VistaEstado
 import com.grupo6.trego.ui.pedidos.PedidoViewModel
 import com.grupo6.trego.ui.theme.TregoOrange
 import org.koin.androidx.compose.koinViewModel
@@ -106,29 +108,21 @@ fun CarritoScreen(
         when (statusDePago) {
             "exito" -> {
                 viewModel.marcarPagoExitoso()
-                procesandoPago = true   // mostramos pantalla de carga
+                procesandoPago = true
 
-                // Obtenemos la cantidad actual ANTES de esperar
-                val conteoAnterior =
-                    (pedidoViewModel.activosState.value as? PedidoUiState.Success)?.activos?.size
-                        ?: 0
-
-                // Delegamos la espera silenciosa al ViewModel
-                val nuevoPedidoLlego =
-                    pedidoViewModel.esperarNuevoPedido(conteoAnterior = conteoAnterior)
+                val nuevoPedidoLlego = pedidoViewModel.esperarNuevoPedido()
 
                 procesandoPago = false
 
                 if (!nuevoPedidoLlego) {
-                    // Si pasaron los 15 segundos y no llegó, le avisamos antes de cambiar de pantalla
+                    // Si pasaron los 15 segundos (timeout) y no llegó el push por problemas de red/servidor:
                     Toast.makeText(
                         activity,
-                        "Tu pago fue exitoso, pero el pedido está tardando en aparecer. Refresca en unos segundos.",
+                        "Tu pago fue exitoso, pero el sistema está tardando en procesarlo. Refresca la lista en unos segundos.",
                         Toast.LENGTH_LONG
                     ).show()
                 }
 
-                // Navegamos a pedido (llegue o no a tiempo, es mejor sacarlo del carrito ya pagado)
                 navController.navigate("pedido") {
                     popUpTo("carrito") { inclusive = true }
                 }
@@ -207,13 +201,9 @@ fun CarritoScreen(
         containerColor = Color.White,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TregoHeader {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(110.dp)
-                        .padding(horizontal = 4.dp)
-                ) {
+            TregoHeader(
+                title = "CARRITO",
+                navigationIcon = {
                     IconButton(
                         onClick = {
                             val rid = viewModel.currentRestauranteId
@@ -222,8 +212,7 @@ fun CarritoScreen(
                             } else {
                                 navController.popBackStack()
                             }
-                        },
-                        modifier = Modifier.align(Alignment.TopStart)
+                        }
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -231,52 +220,30 @@ fun CarritoScreen(
                             tint = Color.White
                         )
                     }
-
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.Center)
-                            .padding(horizontal = 56.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "CARRITO",
-                            fontSize = 19.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.5.sp,
-                            color = Color.White
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = viewModel.nombreRestaurante.ifBlank { "Tu Pedido" },
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
+                },
+                actions = {
                     if (viewModel.items.isNotEmpty()) {
-                        Surface(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(end = 8.dp, top = 4.dp),
-                            shape = CircleShape,
-                            color = Color.White.copy(alpha = 0.15f)
-                        ) {
-                            IconButton(onClick = { viewModel.limpiarCarrito() }) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Limpiar",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
+                        IconButton(onClick = { viewModel.limpiarCarrito() }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Limpiar",
+                                tint = Color.White
+                            )
                         }
                     }
+                },
+                bottomContent = {
+                    Text(
+                        text = viewModel.nombreRestaurante.ifBlank { "Tu Pedido" },
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
                 }
-            }
+            )
         },
     ) { innerPadding ->
         Box(
@@ -286,40 +253,14 @@ fun CarritoScreen(
         ) {
             when (val state = viewModel.uiState) {
                 is CarritoUiState.Vacio -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Surface(
-                            modifier = Modifier.size(150.dp),
-                            shape = CircleShape,
-                            color = Color(0xFFF5F5F5)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Image(
-                                    painter = painterResource(R.drawable.bolsa),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(80.dp),
-                                    contentScale = ContentScale.Fit
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Text(
-                            "Tu carrito está vacío",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                        Spacer(modifier = Modifier.height(32.dp))
-                        Button(
-                            onClick = { navController.popBackStack() },
-                            colors = ButtonDefaults.buttonColors(containerColor = TregoOrange),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Explorar Restaurantes", fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    VistaEstado(
+                        titulo = "Tu carrito está vacío",
+                        mensaje = "Explora restaurantes y añade tus platos favoritos para empezar un pedido.",
+                        iconoResId = R.drawable.bolsa,
+                        colorIcono = Color.Gray,
+                        botonTexto = "Explorar Restaurantes",
+                        onAccion = { navController.popBackStack() }
+                    )
                 }
 
                 is CarritoUiState.Cargado -> {
@@ -458,19 +399,18 @@ fun CarritoScreen(
                 }
 
                 is CarritoUiState.RestauranteCerrado -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                "El restaurante está cerrado",
-                                style = MaterialTheme.typography.headlineSmall
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "No se pueden realizar pedidos en este momento.",
-                                color = Color.Gray
-                            )
+                    VistaEstado(
+                        titulo = "Restaurante Cerrado",
+                        mensaje = "El restaurante ya no acepta pedidos por hoy. ¡Te esperamos mañana!",
+                        iconoResId = R.drawable.tregologo,
+                        botonTexto = "Volver al inicio",
+                        onAccion = {
+                            viewModel.reiniciar()
+                            navController.navigate("restaurants") {
+                                popUpTo(0) { inclusive = true }
+                            }
                         }
-                    }
+                    )
                 }
 
                 is CarritoUiState.AbrirMercadoPago -> {

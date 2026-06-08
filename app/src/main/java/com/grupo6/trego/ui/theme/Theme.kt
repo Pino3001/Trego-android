@@ -14,12 +14,14 @@ private val LightColorScheme = lightColorScheme(
     primary = TregoOrange,
     secondary = TregoOrange,
     tertiary = TregoOrange,
-    background = Color.White,
-    surface = Color.White,
+    background = Color(0xFFFDFDFD),
+    surface = Color.Blue,
     onPrimary = Color.White,
-    onSecondary = Color.White,
+    onSecondary = Color.Yellow,
     onBackground = Color(0xFF1C1B1F),
     onSurface = Color(0xFF1C1B1F),
+    surfaceVariant = BlancoCard
+
 )
 
 @Composable

@@ -48,7 +48,7 @@ import kotlinx.coroutines.tasks.await
 fun FormInicio(
     onLoginSuccess: () -> Unit,
     onNavigateToPhone: () -> Unit,
-    viewModel: PhoneAuthViewModel
+    viewModel: AuthViewModel
 ) {
 // Obtiene el Contexto de Android necesario para funciones del sistema (como diálogos)
     val context = LocalContext.current

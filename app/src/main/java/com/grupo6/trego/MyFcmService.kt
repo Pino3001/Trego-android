@@ -1,3 +1,4 @@
+/*
 package com.grupo6.trego
 
 import android.util.Log
@@ -31,4 +32,4 @@ class MyFcmService : FirebaseMessagingService() {
         // COMENTARIO PARA EL FUTURO:
         // enviarTokenAlBackend(token)
     }
-}
+}*/

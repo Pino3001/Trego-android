@@ -3,40 +3,33 @@ package com.grupo6.trego.ui.pedidos
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -46,168 +39,123 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.grupo6.trego.data.model.EnumEstadoPedido
-import com.grupo6.trego.data.model.PedidoUiModel
-import com.grupo6.trego.ui.componentes.ActivePedidoCard
+import androidx.navigation.NavController
 import com.grupo6.trego.ui.componentes.TregoHeader
+import com.grupo6.trego.ui.componentes.VistaError
+import com.grupo6.trego.ui.componentes.VistaEstado
+import com.grupo6.trego.ui.componentes.ConfirmDialogComponent
+import com.grupo6.trego.data.model.PedidoUiModel
+import com.grupo6.trego.ui.pedidos.componentes.ActivePedidoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 import org.koin.androidx.compose.koinViewModel
-import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PedidoScreen() {
+fun PedidoScreen(navController: NavController) {
     val activity = (LocalContext.current as? ComponentActivity)
         ?: error("La vista no está alojada en una ComponentActivity")
     val viewModel: PedidoViewModel = koinViewModel(viewModelStoreOwner = activity)
-    val activosState by viewModel.activosState.collectAsState()
     val historialState by viewModel.historialState.collectAsState()
 
     var showHistoryModal by remember { mutableStateOf(false) }
+    var pedidoACancelar by remember { mutableStateOf<PedidoUiModel?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val activosState by viewModel.activosState.collectAsState()
 
-    Log.d("Pedidos", "CarritoScreen ViewModel: $viewModel")
-// Escuchamos el evento
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
+
+    // Escuchamos el evento de SnackBar
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { message ->
             snackbarHostState.showSnackbar(message)
         }
     }
 
+    // Carga inicial
     LaunchedEffect(Unit) {
-        viewModel.cargarPedidos()
+        viewModel.cargarPedidos(silencioso = true)
     }
-    Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        topBar = {
-            TregoHeader {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(110.dp)
-                ) {
-                    // Título anclado arriba al centro
-                    Text(
-                        text = "MIS PEDIDOS",
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.5.sp,
-                        color = Color.White,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = 16.dp)
-                    )
 
-                    // Píldora anclada abajo al centro
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 10.dp)
-                            .clip(RoundedCornerShape(50.dp))
-                            .background(Color.White.copy(alpha = 0.12f))
-                            .border(
-                                width = 0.5.dp,
-                                color = Color.White.copy(alpha = 0.2f),
-                                shape = RoundedCornerShape(50.dp)
-                            )
-                            .padding(horizontal = 14.dp, vertical = 5.dp),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
+    Scaffold(
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(
+                    containerColor = TregoOrange,
+                    contentColor = Color.White,
+                    snackbarData = data,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+        },
+        topBar = {
+            TregoHeader(
+                title = "MIS PEDIDOS",
+                actions = {
+                    // La lógica del botón a la derecha es mucho más limpia así
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.15f),
+                        modifier = Modifier.padding(end = 8.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) {
-                                showHistoryModal = true
-                                viewModel.cargarHistorial()
-                            },
-                            horizontalArrangement = Arrangement.spacedBy(5.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        IconButton(onClick = { navController.navigate("historial") }) {
                             Icon(
                                 imageVector = Icons.Default.History,
-                                contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.85f),
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Text(
-                                text = "Ver historial",
-                                color = Color.White.copy(alpha = 0.85f),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .width(1.dp)
-                                .height(13.dp)
-                                .background(Color.White.copy(alpha = 0.25f))
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .size(22.dp)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) { viewModel.cargarPedidos() },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Actualizar",
-                                tint = Color.White.copy(alpha = 0.85f),
-                                modifier = Modifier.size(13.dp)
+                                contentDescription = "Historial pedido",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
                 }
-            }
+
+            )
         }
     ) { padding ->
-        Box(
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                viewModel.cargarPedidos(silencioso = true)
+            },
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
         ) {
             when (val state = activosState) {
                 is PedidoUiState.Loading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = TregoOrange
-                    )
+                    // Evitamos mostrar el spinner doble si ya está la animación de pull-to-refresh
+                    if (!isRefreshing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center),
+                            color = TregoOrange
+                        )
+                    }
                 }
 
                 is PedidoUiState.Error -> {
-                    AlertDialog(
-                        onDismissRequest = {
-                            viewModel.dismissActivosError()  // vuelve al Success anterior
-                        },
-                        confirmButton = {
-                            TextButton(onClick = { viewModel.dismissActivosError() }) {
-                                Text("Aceptar")
-                            }
-                        },
-                        title = { Text("Error") },
-                        text = { Text(state.message) }
+                    VistaError(
+                        mensaje = state.message,
+                        onReintentar = { viewModel.cargarPedidos() }
                     )
                 }
 
                 is PedidoUiState.Success -> {
                     if (state.activos.isEmpty()) {
-                        EmptyActiveOrders()
+                        VistaEstado(
+                            titulo = "No tienes pedidos activos",
+                            mensaje = "¡Tus pedidos pagados aparecerán aquí!",
+                            icono = Icons.Default.NotificationsNone,
+                            colorIcono = Color.LightGray,
+                            onAccion = null
+                        )
                     } else {
                         LazyColumn(
                             contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.fillMaxSize() // Aseguramos que ocupe todo el espacio para detectar el scroll
                         ) {
                             item {
                                 Text(
@@ -218,25 +166,41 @@ fun PedidoScreen() {
                                 )
                             }
                             items(state.activos) { pedido ->
-                                ActivePedidoCard(pedido, onCancelClick = {
-                                    viewModel.cancelarPedido(
-                                        pedido.pedido
-                                    )
-                                })
+                                ActivePedidoCard(
+                                    pedido, onCancelClick = {
+                                        pedidoACancelar = pedido
+                                    },
+                                    onClickReclamo = { peticionReclamo, onSuccess ->
+                                        viewModel.crearReclamo(peticionReclamo, onSuccess)
+
+                                    }
+                                )
                             }
                         }
                     }
-
                 }
 
                 else -> {}
-
             }
 
+            if (pedidoACancelar != null) {
+                ConfirmDialogComponent(
+                    title = "Cancelar Pedido",
+                    message = "¿Estás seguro que deseas cancelar tu pedido de ${pedidoACancelar?.nombreRestaurante} (Pedido #${pedidoACancelar?.pedido?.idPedido})?",
+                    confirmText = "Sí, Cancelar",
+                    dismissText = "No, Volver",
+                    onConfirm = {
+                        pedidoACancelar?.let { viewModel.cancelarPedido(it.pedido) }
+                        pedidoACancelar = null
+                    },
+                    onDismiss = { pedidoACancelar = null }
+                )
+            }
+
+            // Lógica del modal de historial
             if (showHistoryModal) {
                 when (val hState = historialState) {
                     is PedidoUiState.Loading -> {
-                        // Muestra un loader centrado sobre la pantalla mientras baja el historial
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -247,15 +211,7 @@ fun PedidoScreen() {
                         }
                     }
 
-                    is PedidoUiState.Historial -> {
-                        HistorialModal(
-                            pedidoModel = hState.historial,
-                            onDismiss = { showHistoryModal = false }
-                        )
-                    }
-
                     is PedidoUiState.Error -> {
-                        // Si falla el historial, mostramos un cartelito y cerramos el modal
                         AlertDialog(
                             onDismissRequest = { showHistoryModal = false },
                             confirmButton = {
@@ -269,86 +225,6 @@ fun PedidoScreen() {
                     }
 
                     else -> {}
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun EmptyActiveOrders() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(Icons.Default.Info, null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
-        Spacer(Modifier.height(16.dp))
-        Text("No tienes pedidos activos", color = Color.Gray)
-        Text("¡Tus pedidos pagados aparecerán aquí!", fontSize = 12.sp, color = Color.LightGray)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun HistorialModal(pedidoModel: List<PedidoUiModel>, onDismiss: () -> Unit) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = Color.White
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxHeight(0.8f)
-        ) {
-            Text(
-                "HISTORIAL DE PEDIDOS",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            if (pedidoModel.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No hay pedidos anteriores", color = Color.Gray)
-                }
-            } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(pedidoModel) { item ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color(0xFFF5F5F5), RoundedCornerShape(12.dp))
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    "Pedido #${item.pedido.idPedido}",
-                                    fontWeight = FontWeight.Bold
-                                )
-                                val fecha =
-                                    item.pedido.fechaCreacion?.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                                        ?: "---"
-                                Text(fecha, fontSize = 11.sp, color = Color.Gray)
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(
-                                    "$${item.pedido.total}",
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = TregoOrange
-                                )
-                                Text(
-                                    item.pedido.estado?.name ?: "",
-                                    fontSize = 10.sp,
-                                    color = if (item.pedido.estado == EnumEstadoPedido.Entregado) Color(
-                                        0xFF4CAF50
-                                    ) else Color.Gray
-                                )
-                            }
-                        }
-                    }
                 }
             }
         }

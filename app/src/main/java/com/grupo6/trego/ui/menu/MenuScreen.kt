@@ -1,6 +1,5 @@
 package com.grupo6.trego.ui.menu
 
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -20,11 +19,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.SwapVert
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,12 +34,17 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,14 +54,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.grupo6.trego.R
 import com.grupo6.trego.ui.carrito.CarritoViewModel
 import com.grupo6.trego.ui.carrito.componentes.ProductoDetalleModal
-import com.grupo6.trego.ui.menu.componentes.MenuEmpty
+import com.grupo6.trego.ui.componentes.CalificacionModal
+import com.grupo6.trego.ui.componentes.ResenaCard
+import com.grupo6.trego.ui.componentes.ResenasHeader
+import com.grupo6.trego.ui.componentes.VistaError
+import com.grupo6.trego.ui.componentes.VistaEstado
 import com.grupo6.trego.ui.menu.componentes.MenuHeader
 import com.grupo6.trego.ui.menu.componentes.OfertaItem
 import com.grupo6.trego.ui.menu.componentes.ProductoItem
-import com.grupo6.trego.ui.tabs.NavigationTabs
 import com.grupo6.trego.ui.theme.TregoOrange
+import com.grupo6.trego.ui.theme.onCancelar
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -71,6 +81,20 @@ fun MenuScreen(
     val activity = LocalContext.current as? ComponentActivity
         ?: error("ComponentActivity no disponible")
     val carritoViewModel: CarritoViewModel = koinViewModel(viewModelStoreOwner = activity)
+    var abrirStar by remember { mutableStateOf(false) }
+    var rating by remember { mutableStateOf(0) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        menuViewModel.uiEvent.collect { event ->
+            when (event) {
+                is MenuUiEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+            }
+        }
+    }
 
     LaunchedEffect(restauranteId) {
         menuViewModel.loadMenu(restauranteId)
@@ -78,10 +102,19 @@ fun MenuScreen(
 
     // Scaffold SIN topBar para permitir inmersión total de la foto
     Scaffold(
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(
+                    containerColor = TregoOrange,
+                    contentColor = Color.White,
+                    snackbarData = data,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+        },
         containerColor = Color.White,
     ) { innerPadding ->
 
-        // Modal carrito (Permanece igual)
         val productoEnModal = carritoViewModel.productoEnModal
         if (carritoViewModel.showModal && productoEnModal != null) {
             ProductoDetalleModal(
@@ -98,135 +131,343 @@ fun MenuScreen(
                     CircularProgressIndicator(color = TregoOrange)
                 }
             }
-            is MenuUiState.SinProductos -> MenuEmpty(onVolver = { navController.popBackStack() })
-            is MenuUiState.Error -> MenuEmpty(mensaje = state.message, onVolver = { navController.popBackStack() })
+
+            is MenuUiState.SinProductos -> {
+                VistaEstado(
+                    titulo = "Sin Productos",
+                    mensaje = "Este restaurante aún no ha cargado su menú.",
+                    icono = Icons.Default.RestaurantMenu,
+                    colorIcono = Color.LightGray,
+                    botonTexto = "Volver al listado",
+                    onAccion = { navController.popBackStack() }
+                )
+            }
+
+            is MenuUiState.Error -> {
+                VistaError(
+                    mensaje = state.message,
+                    onReintentar = { menuViewModel.loadMenu(restauranteId) }
+                )
+            }
 
             is MenuUiState.Success -> {
-                // (Mantén aquí tu lógica del AlertDialog ordenPrecio tal cual la tienes)
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        // 🌟 MAGIA EDGE-TO-EDGE: Solo aplicamos el padding inferior para evitar la navbar
-                        .padding(bottom = innerPadding.calculateBottomPadding())
-                ) {
-                    // 1. Imagen inmersiva
-                    item {
-                        MenuHeader(
-                            restaurante = state.restaurante,
-                            onBack = { navController.popBackStack() }
-                        )
-                    }
-
-                    // 2. Ofertas (Debajo de la foto, antes de los filtros)
-                    if (state.ofertas.isNotEmpty()) {
+                if (state.restaurante.abierto == false) {
+                    VistaEstado(
+                        titulo = "Restaurante Cerrado",
+                        mensaje = "El restaurante ya no acepta pedidos por hoy. ¡Te esperamos mañana!",
+                        iconoResId = R.drawable.tregologo,
+                        botonTexto = "Volver al listado",
+                        onAccion = { navController.popBackStack() }
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = innerPadding.calculateBottomPadding())
+                    ) {
                         item {
-                            Spacer(Modifier.height(16.dp))
-                            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("🏷️", fontSize = 18.sp)
-                                    Spacer(Modifier.width(6.dp))
-                                    Text("Ofertas destacadas", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                                }
-                                Spacer(Modifier.height(12.dp))
-                                LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    modifier = Modifier.height(130.dp)
-                                ) {
-                                    items(items = state.ofertas, key = { it.idProducto!! }) { oferta ->
-                                        OfertaItem(producto = oferta, onClick = {
-                                            carritoViewModel.abrirModalNuevoProducto(
-                                                productoSimplificado = oferta.toSimplificado(),
-                                                restaurante = state.restaurante
-                                            )
-                                        })
-                                    }
-                                }
-                                Spacer(Modifier.height(16.dp))
-                            }
-                        }
-                    }
-
-                    // 3. BARRA DE FILTROS PEGADIZA (Sticky Header)
-                    stickyHeader {
-                        Surface( // Surface para darle fondo sólido cuando pase por encima de los productos
-                            color = Color.White,
-                            shadowElevation = 2.dp,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState())
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Button(
-                                    onClick = menuViewModel::showOrdenDialog,
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (state.ordenPrecio != OrdenPrecio.NINGUNO) Color(0xFF1E2A3A) else TregoOrange
-                                    ),
-                                    shape = RoundedCornerShape(8.dp), // Forma más cuadrada/moderna
-                                    contentPadding = PaddingValues(horizontal = 12.dp)
-                                ) {
-                                    Icon(Icons.Default.SwapVert, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(
-                                        text = if (state.ordenPrecio == OrdenPrecio.NINGUNO) "Ordenar" else "Filtro activo",
-                                        fontSize = 13.sp
-                                    )
-                                }
-
-                                // Línea separadora
-                                Box(modifier = Modifier.height(24.dp).width(1.dp).background(Color.LightGray))
-
-                                state.categorias.forEach { categoria ->
-                                    FilterChip(
-                                        selected = state.categoriaSeleccionada == categoria,
-                                        onClick = { menuViewModel.selectCategoria(categoria) },
-                                        label = { Text(categoria, fontSize = 13.sp, fontWeight = FontWeight.Medium) },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = Color(0xFF1E2A3A),
-                                            selectedLabelColor = Color.White
-                                        ),
-                                        shape = RoundedCornerShape(8.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // 4. Lista de Productos
-                    item {
-                        Text(
-                            text = if (state.categoriaSeleccionada == "Todos") "Todos los productos" else state.categoriaSeleccionada,
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 20.sp,
-                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 12.dp)
-                        )
-                    }
-
-                    if (state.productosFiltrados.isEmpty()) {
-                        item {
-                            Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
-                                Text("No hay productos en esta categoría", color = Color.Gray, fontSize = 15.sp)
-                            }
-                        }
-                    } else {
-                        items(items = state.productosFiltrados, key = { it.idProducto!! }) { producto ->
-                            ProductoItem(
-                                producto = producto,
-                                onAgregar = {
-                                    carritoViewModel.abrirModalNuevoProducto(
-                                        productoSimplificado = producto.toSimplificado(),
-                                        restaurante = state.restaurante
-                                    )
-                                }
+                            MenuHeader(
+                                restaurante = state.restaurante,
+                                onBack = { navController.popBackStack() },
+                                onStarClick = { abrirStar = !abrirStar }
                             )
                         }
-                    }
 
-                    item { Spacer(Modifier.height(32.dp)) } // Margen holgado al final
+                        if (state.ofertas.isNotEmpty()) {
+                            item {
+                                Spacer(Modifier.height(16.dp))
+                                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("🏷️", fontSize = 18.sp)
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            "Ofertas destacadas",
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 14.sp
+                                        )
+                                    }
+                                    Spacer(Modifier.height(6.dp))
+                                    LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        modifier = Modifier.height(130.dp)
+                                    ) {
+                                        items(
+                                            items = state.ofertas,
+                                            key = { it.idProducto!! }) { oferta ->
+                                            OfertaItem(producto = oferta, onClick = {
+                                                carritoViewModel.abrirModalNuevoProducto(
+                                                    productoSimplificado = oferta.toSimplificado(),
+                                                    restaurante = state.restaurante
+                                                )
+                                            })
+                                        }
+                                    }
+                                    Spacer(Modifier.height(16.dp))
+                                }
+                            }
+                        }
+
+                        stickyHeader {
+                            Surface(
+                                color = Color.White,
+                                shadowElevation = 2.dp,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .horizontalScroll(rememberScrollState())
+                                            .padding(horizontal = 16.dp, vertical = 1.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Button(
+                                            onClick = menuViewModel::showOrdenDialog,
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (state.ordenPrecio != OrdenPrecio.NINGUNO) Color(0xFF1E2A3A) else TregoOrange
+                                            ),
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp)
+                                        ) {
+                                            Icon(Icons.Default.SwapVert, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(Modifier.width(4.dp))
+                                            Text(text = if (state.ordenPrecio == OrdenPrecio.NINGUNO) "Ordenar" else "Filtro activo", fontSize = 13.sp)
+                                        }
+
+                                        Box(modifier = Modifier.height(24.dp).width(1.dp).background(Color.LightGray))
+
+                                        state.categorias.forEach { categoria ->
+                                            FilterChip(
+                                                selected = state.categoriaSeleccionada == categoria,
+                                                onClick = { menuViewModel.selectCategoria(categoria) },
+                                                label = { Text(categoria, fontSize = 13.sp, fontWeight = FontWeight.Medium) },
+                                                colors = FilterChipDefaults.filterChipColors(
+                                                    selectedContainerColor = Color(0xFF1E2A3A),
+                                                    selectedLabelColor = Color.White
+                                                ),
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                        }
+                                    }
+
+
+                                    if (state.subcategoriasDisponibles.size > 1) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .horizontalScroll(rememberScrollState())
+                                                .padding(start = 16.dp, end = 16.dp, bottom = 2.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            state.subcategoriasDisponibles.forEach { subcategoria ->
+                                                FilterChip(
+                                                    selected = state.subcategoriaSeleccionada == subcategoria,
+                                                    onClick = { menuViewModel.selectSubcategoria(subcategoria) },
+                                                    label = {
+                                                        Text(
+                                                            text = subcategoria,
+                                                            fontSize = 12.sp,
+                                                            fontWeight = FontWeight.Normal
+                                                        )
+                                                    },
+                                                    colors = FilterChipDefaults.filterChipColors(
+                                                        selectedContainerColor = onCancelar,
+                                                        selectedLabelColor = Color.White
+                                                    ),
+                                                    shape = RoundedCornerShape(12.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        item {
+                            Text(
+                                text = if (state.categoriaSeleccionada == "Todos") "Todos los productos" else state.categoriaSeleccionada,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = if (state.categoriaSeleccionada == "Todos") 14.sp else 18.sp,
+                                color = if (state.categoriaSeleccionada == "Todos") Color.Unspecified else TregoOrange,
+                                modifier = Modifier.padding(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    top = 8.dp,
+                                )
+                            )
+                        }
+
+                        if (state.productosFiltrados.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(40.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "No hay productos disponibles",
+                                        color = Color.Gray,
+                                        fontSize = 15.sp
+                                    )
+                                }
+                            }
+                        } else {
+                            when {
+                                state.subcategoriaSeleccionada != "Todos" -> {
+                                    item {
+                                        Text(
+                                            text = state.subcategoriaSeleccionada,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp,
+                                            modifier = Modifier.padding(
+                                                start = 22.dp,
+                                                top = 6.dp,
+                                                bottom = 8.dp
+                                            )
+                                        )
+                                    }
+
+                                    items(
+                                        items = state.productosFiltrados,
+                                        key = { it.idProducto!! }
+                                    ) { producto ->
+                                        ProductoItem(
+                                            producto = producto,
+                                            onAgregar = { carritoViewModel.abrirModalNuevoProducto(
+                                                productoSimplificado = producto.toSimplificado(),
+                                                restaurante = state.restaurante
+                                            ) })
+                                    }
+                                }
+
+                                state.categoriaSeleccionada != "Todos" -> {
+                                    val productosAgrupadosPorSub =
+                                        state.productosFiltrados.groupBy {
+                                            it.subCategoria?.nombre ?: "Otros"
+                                        }
+
+                                    productosAgrupadosPorSub.forEach { (nombreSubcategoria, productosSub) ->
+                                        item {
+                                            Text(
+                                                text = nombreSubcategoria,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 14.sp,
+                                                color = Color.Gray,
+                                                modifier = Modifier.padding(
+                                                    start = 24.dp,
+                                                    top = 2.dp,
+                                                    bottom = 2.dp
+                                                )
+                                            )
+                                        }
+
+                                        items(
+                                            items = productosSub,
+                                            key = { it.idProducto!! }) { producto ->
+                                            ProductoItem(
+                                                producto = producto,
+                                                onAgregar = {
+                                                    carritoViewModel.abrirModalNuevoProducto(
+                                                        productoSimplificado = producto.toSimplificado(),
+                                                        restaurante = state.restaurante
+                                                    )
+                                                })
+                                        }
+                                    }
+                                }
+
+                                else -> {
+                                    val productosPorCategoria = state.productosFiltrados.groupBy {
+                                        it.categoria?.name ?: "Otros"
+                                    }
+                                    productosPorCategoria.forEach { (nombreCategoria, productosDeLaCategoria) ->
+                                        item {
+                                            Text(
+                                                text = nombreCategoria.uppercase(),
+                                                fontWeight = FontWeight.Black,
+                                                fontSize = 18.sp,
+                                                color = TregoOrange,
+                                                modifier = Modifier.padding(
+                                                    start = 24.dp,
+                                                    top = 8.dp,
+                                                    bottom = 2.dp
+                                                )
+                                            )
+                                        }
+
+                                        val productosPorSubcategoria =
+                                            productosDeLaCategoria.groupBy {
+                                                it.subCategoria?.nombre ?: "Otros"
+                                            }
+
+                                        productosPorSubcategoria.forEach { (nombreSubcategoria, productosFinales) ->
+                                            item {
+                                                Text(
+                                                    text = nombreSubcategoria,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 14.sp,
+                                                    color = Color.Gray,
+                                                    modifier = Modifier.padding(
+                                                        start = 32.dp,
+                                                        bottom = 2.dp
+                                                    )
+                                                )
+                                            }
+
+                                            // Lista de productos final
+                                            items(
+                                                items = productosFinales,
+                                                key = { it.idProducto!! }) { producto ->
+                                                ProductoItem(
+                                                    producto = producto,
+                                                    onAgregar = {
+                                                        carritoViewModel.abrirModalNuevoProducto(
+                                                            productoSimplificado = producto.toSimplificado(),
+                                                            restaurante = state.restaurante
+                                                        )
+                                                    })
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        item {
+                            ResenasHeader(
+                                resenas = state.resenas,
+                                promedio = state.restaurante.calificacionProm ?: 0f
+                            )
+                        }
+
+                        itemsIndexed(
+                            items = state.resenas,
+                            key = { _, r -> "${r.nombreCliente}_${r.fechaCreacion}" }
+                        ) { index, resena ->
+                            ResenaCard(resena = resena)
+                            if (index < state.resenas.lastIndex) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    color = Color(0xFFF5F5F5)
+                                )
+                            }
+                        }
+
+                        item { Spacer(Modifier.height(48.dp)) }
+                    }
+                }
+                if (abrirStar) {
+                    CalificacionModal(
+                        nombreResto = state.restaurante.nombre,
+                        onDismiss = { abrirStar = false },
+                        onConfirm = { rating, comentario ->
+                            menuViewModel.enviarResena(restauranteId, rating, comentario)
+                            abrirStar = false
+                        }
+                    )
                 }
             }
         }

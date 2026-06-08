@@ -3,21 +3,19 @@ package com.grupo6.trego.ui.menu
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.grupo6.trego.data.model.DTOComentario
 import com.grupo6.trego.data.model.DTOProducto
 import com.grupo6.trego.data.model.DTORestaurante
 import com.grupo6.trego.data.repository.RestauranteRepository
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.collections.List
-import kotlin.collections.distinct
-import kotlin.collections.filter
-import kotlin.collections.listOf
-import kotlin.collections.plus
-import kotlin.collections.sorted
-import kotlin.collections.sortedBy
-import kotlin.collections.sortedByDescending
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 class MenuViewModel(
     private val repository: RestauranteRepository
@@ -26,35 +24,87 @@ class MenuViewModel(
     private val _uiState = MutableStateFlow<MenuUiState>(MenuUiState.Loading)
     val uiState: StateFlow<MenuUiState> = _uiState.asStateFlow()
 
+    private val _uiEvent = Channel<MenuUiEvent>(Channel.BUFFERED)
+    val uiEvent = _uiEvent.receiveAsFlow()
+
+    private inline fun updateSuccess(crossinline update: MenuUiState.Success.() -> MenuUiState.Success) {
+        _uiState.update { currentState ->
+            if (currentState is MenuUiState.Success) {
+                currentState.update()
+            } else {
+                currentState
+            }
+        }
+    }
+
     fun loadMenu(restaurantId: Long) {
         Log.e("Load", restaurantId.toString())
         viewModelScope.launch {
             _uiState.value = MenuUiState.Loading
+
             repository.getRestaurantMenu(restaurantId)
                 .onSuccess { restaurante ->
                     val productos = restaurante.productos ?: emptyList()
-
-                    // Ofertas: productos que tienen el campo oferta != null
                     val ofertas = productos.filter { it.oferta != null }
 
-                    _uiState.value = if (productos.isEmpty()) {
-                        MenuUiState.SinProductos
+                    if (productos.isEmpty()) {
+                        _uiState.value = MenuUiState.SinProductos
                     } else {
-                        MenuUiState.Success(
+                        _uiState.value = MenuUiState.Success(
                             restaurante = restaurante,
                             productosOriginales = productos,
                             categorias = listOf("Todos") +
                                     productos.mapNotNull { it.categoria?.name }.distinct().sorted(),
-                            subcategorias = listOf("Todos") +
-                                    productos.mapNotNull { it.subcategoria?.nombre }.distinct().sorted(),
-                            ofertas = ofertas   // ← lista cargada
+                            ofertas = ofertas,
+                            resenas = emptyList()
                         )
+
+                        loadResenas(restaurantId)
                     }
                 }
                 .onFailure { e ->
                     _uiState.value = MenuUiState.Error(
                         e.message ?: "Error al cargar el menú"
                     )
+                }
+        }
+    }
+
+    fun loadResenas(idRestaurante: Long? = null) {
+        viewModelScope.launch {
+            repository.getListarComentarios(idRestaurante?.toInt() ?: 0)
+                .onSuccess { resenas ->
+                    updateSuccess { copy(resenas = resenas) }
+                }
+                .onFailure { exception ->
+                    val errorMsg = exception.message ?: "No se pudieron cargar las reseñas"
+                    _uiEvent.send(MenuUiEvent.ShowSnackbar(errorMsg))
+                }
+        }
+    }
+
+
+    fun enviarResena(restauranteId: Long, calificacion: Int, texto: String) {
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+        val fechaActual = LocalDateTime.now().format(formatter)
+        val nuevoComentario = DTOComentario(
+            null,
+            texto,
+            restauranteId,
+            calificacion,   // puntuacion
+            fechaActual
+        )
+        viewModelScope.launch {
+            updateSuccess { copy(enviandoResena = true) }
+            repository.setComentario(nuevoComentario)
+                .onSuccess { comentarioCreado ->
+                    updateSuccess {
+                        copy(resenas = listOf(comentarioCreado) + resenas, enviandoResena = false)
+                    }
+                }
+                .onFailure { exception ->
+                    updateSuccess { copy(enviandoResena = false) }
+                    _uiEvent.send(MenuUiEvent.ShowSnackbar(exception.message ?: "Error al enviar"))
                 }
         }
     }
@@ -82,12 +132,6 @@ class MenuViewModel(
     fun selectOrden(orden: OrdenPrecio) = updateSuccess {
         copy(ordenPrecio = orden, showOrdenDialog = false)
     }
-
-    // Helper privado — evita el cast repetido en cada acción
-    private fun updateSuccess(block: MenuUiState.Success.() -> MenuUiState.Success) {
-        val current = _uiState.value as? MenuUiState.Success ?: return
-        _uiState.value = current.block()
-    }
 }
 
 enum class OrdenPrecio { NINGUNO, MENOR, MAYOR }
@@ -98,16 +142,28 @@ sealed class MenuUiState {
     data class Error(val message: String) : MenuUiState()
     data class Success(
         val restaurante: DTORestaurante,
-        val productosOriginales: List<DTOProducto>,   // nunca se toca
+        val productosOriginales: List<DTOProducto>,
         val categorias: List<String>,
         val categoriaSeleccionada: String = "Todos",
-        val subcategorias: List<String> = emptyList(),
         val subcategoriaSeleccionada: String = "Todos",
         val ordenPrecio: OrdenPrecio = OrdenPrecio.NINGUNO,
         val showOrdenDialog: Boolean = false,
-        val ofertas: List<DTOProducto> = emptyList() // hasta que implementes ofertas
+        val ofertas: List<DTOProducto> = emptyList(),
+        val resenas: List<DTOComentario> = emptyList(),
+        val enviandoResena: Boolean = false
     ) : MenuUiState() {
-        // Lista derivada — siempre consistente
+        val subcategoriasDisponibles: List<String>
+            get() {
+                val productosBase = if (categoriaSeleccionada == "Todos") {
+                    productosOriginales
+                } else {
+                    productosOriginales.filter { it.categoria?.name == categoriaSeleccionada }
+                }
+                return listOf("Todos") + productosBase
+                    .mapNotNull { it.subCategoria?.nombre }
+                    .distinct()
+                    .sorted()
+            }
         val productosFiltrados: List<DTOProducto>
             get() {
                 var filtrados = if (categoriaSeleccionada == "Todos") {
@@ -120,7 +176,7 @@ sealed class MenuUiState {
 
                 if (subcategoriaSeleccionada != "Todos") {
                     filtrados = filtrados.filter {
-                        it.subcategoria?.nombre == subcategoriaSeleccionada
+                        it.subCategoria?.nombre == subcategoriaSeleccionada
                     }
                 }
 
@@ -128,11 +184,17 @@ sealed class MenuUiState {
                     OrdenPrecio.MENOR -> filtrados.sortedBy {
                         it.calcularPrecioConDescuento()
                     }
+
                     OrdenPrecio.MAYOR -> filtrados.sortedByDescending {
                         it.calcularPrecioConDescuento()
                     }
+
                     OrdenPrecio.NINGUNO -> filtrados
                 }
             }
     }
+}
+
+sealed interface MenuUiEvent {
+    data class ShowSnackbar(val message: String) : MenuUiEvent
 }

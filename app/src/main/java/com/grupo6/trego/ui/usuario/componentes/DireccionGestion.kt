@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,9 +27,13 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,10 +50,12 @@ import androidx.compose.ui.zIndex
 import com.grupo6.trego.data.model.DTODireccion
 import com.grupo6.trego.ui.componentes.TregoHeader
 import com.grupo6.trego.ui.theme.TregoOrange
+import com.grupo6.trego.ui.usuario.PerfilViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DireccionGestion(
+    viewModel: PerfilViewModel,
     direcciones: List<DTODireccion>,
     onAgregar: (DTODireccion) -> Unit,
     onEditar: (String, DTODireccion) -> Unit,
@@ -59,6 +64,14 @@ fun DireccionGestion(
 ) {
     var direccionEditando by remember { mutableStateOf<DTODireccion?>(null) }
     var mostrandoFormulario by remember { mutableStateOf(false) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.eventFlow.collect { mensaje ->
+            snackbarHostState.showSnackbar(mensaje)
+        }
+    }
 
     // El contenedor principal mantiene tu zIndex para sobreponerse a otras vistas
     Box(
@@ -77,7 +90,10 @@ fun DireccionGestion(
                 DireccionForm(
                     direccion = direccionEditando,
                     onSave = { tagOrig, it ->
-                        if (direccionEditando == null) onAgregar(it) else onEditar(tagOrig ?: "", it)
+                        if (direccionEditando == null) onAgregar(it) else onEditar(
+                            tagOrig ?: "",
+                            it
+                        )
                         mostrandoFormulario = false
                     },
                     onBack = { mostrandoFormulario = false },
@@ -87,41 +103,27 @@ fun DireccionGestion(
                 // ─── VISTA 1: LISTA CON SCAFFOLD ───
                 Scaffold(
                     topBar = {
-                        TregoHeader {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(110.dp)
-                                    .padding(horizontal = 4.dp)
-                            ) {
-                                IconButton(
-                                    onClick =  onDismiss,
-                                    Modifier.align(Alignment.TopStart)
-                                ) {
+                        TregoHeader(
+                            title = "MIS DIRECCIONES",
+                            navigationIcon = {
+                                IconButton(onClick = onDismiss) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = "Volver",
                                         tint = Color.White
                                     )
                                 }
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .align(Alignment.Center)
-                                        .padding(horizontal = 56.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ){
-                                    Text(
-                                        text = "MIS DIRECCIONES",
-                                        fontSize = 19.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = 2.5.sp,
-                                        color = Color.White,
-                                    )
-                                }
-
                             }
-
+                        )
+                    },
+                    snackbarHost = {
+                        SnackbarHost(hostState = snackbarHostState) { data ->
+                            Snackbar(
+                                containerColor = TregoOrange,
+                                contentColor = Color.White,
+                                snackbarData = data,
+                                shape = RoundedCornerShape(16.dp)
+                            )
                         }
                     },
                     floatingActionButton = {

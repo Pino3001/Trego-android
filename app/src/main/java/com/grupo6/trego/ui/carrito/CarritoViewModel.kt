@@ -14,6 +14,7 @@ import com.grupo6.trego.data.model.DTOPreferenciaMP
 import com.grupo6.trego.data.model.DTOProductoPedido
 import com.grupo6.trego.data.model.DTOProductoSimplificado
 import com.grupo6.trego.data.model.DTORestaurante
+import com.grupo6.trego.data.notificaciones.PushNotificationManager
 import com.grupo6.trego.data.repository.PedidoRepository
 import com.grupo6.trego.data.repository.UsuarioRepository
 import kotlinx.coroutines.channels.Channel
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import org.koin.java.KoinJavaComponent.inject
 
 sealed class CarritoUiState {
     object Cargando : CarritoUiState()               // nueva
@@ -44,7 +46,7 @@ sealed class DireccionesState {
 class CarritoViewModel(
     private val repository: CarritoRepository,
     private val pedidoRepository: PedidoRepository,
-    private val usuarioRepository: UsuarioRepository
+    private val usuarioRepository: UsuarioRepository,
 ) : ViewModel() {
 
     var uiState by mutableStateOf<CarritoUiState>(CarritoUiState.Cargando)
@@ -206,8 +208,7 @@ class CarritoViewModel(
                     nombre = item.producto?.nombre ?: "",
                     urlImagen = item.producto?.urlImagen ?: "",
                     precioOferta = item.producto?.precioOferta,
-                    ingredientes = ((item.producto?.ingredientes
-                        ?: intArrayOf()) as List<DTOIngrediente>),
+                    ingredientes = item.producto?.ingredientes ?: emptyList(),
                     descripcion = null
                 ),
                 cantidad = nuevaCantidad,
@@ -250,8 +251,7 @@ class CarritoViewModel(
                     nombre = item.producto?.nombre ?: "",
                     urlImagen = item.producto?.urlImagen ?: "",
                     precioOferta = item.producto?.precioOferta,
-                    ingredientes = ((item.producto?.ingredientes
-                        ?: intArrayOf()) as List<DTOIngrediente>),
+                    ingredientes = item.producto?.ingredientes ?: emptyList(),
                     descripcion = null
                 ),
                 cantidad = item.cantidad ?: 1,

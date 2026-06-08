@@ -50,6 +50,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,7 +65,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key.Companion.F
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -81,6 +83,7 @@ import com.grupo6.trego.R
 import com.grupo6.trego.data.model.DTOUsuario
 import com.grupo6.trego.ui.componentes.DialogComponent
 import com.grupo6.trego.ui.componentes.TregoHeader
+import com.grupo6.trego.ui.componentes.VistaError
 import com.grupo6.trego.ui.theme.TregoOrange
 import com.grupo6.trego.ui.usuario.componentes.DireccionGestion
 import org.koin.androidx.compose.koinViewModel
@@ -105,6 +108,14 @@ fun PerfilScreen(
     // Estado para el modal de direcciones
     var showDireccionesModal by remember { mutableStateOf(false) }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        perfilView.eventFlow.collect { mensaje ->
+            snackbarHostState.showSnackbar(mensaje)
+        }
+    }
+
     // Cuando se cargan los datos correctamente, inicializamos los campos
     LaunchedEffect(state) {
         if (state is PerfilUiState.Success) {
@@ -119,6 +130,7 @@ fun PerfilScreen(
     // Modal de direcciones
     if (showDireccionesModal) {
         DireccionGestion(
+            viewModel = perfilView,
             direcciones = direcciones,  // ✅ Usa la lista del state
             onAgregar = { nueva ->
                 perfilView.agregarDireccion(nueva)
@@ -201,49 +213,34 @@ fun PerfilScreen(
 
     Scaffold(
         containerColor = Color.White,
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(
+                    containerColor = TregoOrange,
+                    contentColor = Color.White,
+                    snackbarData = data,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+        },
         topBar = {
-            TregoHeader {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(110.dp)
-                        .padding(horizontal = 4.dp)
-                ) {
-                    Text(
-                        text = "MI PERFIL",
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.5.sp,
-                        color = Color.White,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-
-                    // Botón de editar (solo visible cuando no está editando y hay datos cargados)
-                    if (!isEditing && state is PerfilUiState.Success) {
-                        Surface(
-                            modifier = Modifier.align(Alignment.CenterEnd),
-                            shape = CircleShape,
-                            color = Color.White.copy(alpha = 0.15f)
-                        ) {
-                            IconButton(onClick = { isEditing = true; imagenUri = null }) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Editar perfil",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                    } else {
-                        Surface(
-                            modifier = Modifier.align(Alignment.CenterEnd),
-                            shape = CircleShape,
-                            color = Color.White.copy(alpha = 0.15f)
-                        ) {
-                            IconButton(onClick = {
+            TregoHeader(
+                title = "MI PERFIL",
+                actions = {
+                    // La lógica del botón a la derecha es mucho más limpia así
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.15f),
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        IconButton(onClick = {
+                            if (!isEditing) {
+                                isEditing = true
+                                imagenUri = null
+                            } else {
                                 isEditing = false
                                 imagenUri = null
-                                // Restaurar los valores originales desde el estado actual
+                                // Restaurar los valores originales
                                 if (state is PerfilUiState.Success) {
                                     val u = (state as PerfilUiState.Success).user
                                     nombreInput = u.nombre ?: ""
@@ -251,22 +248,30 @@ fun PerfilScreen(
                                     emailUsuario = u.email ?: ""
                                     urlImagenUsuario = u.urlImagen ?: ""
                                 }
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Cancelar edicion",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
                             }
+                        }) {
+                            Icon(
+                                imageVector = if (!isEditing) Icons.Default.Edit else Icons.Default.Close,
+                                contentDescription = if (!isEditing) "Editar perfil" else "Cancelar edición",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                     }
                 }
-            }
+            )
         }
     ) { innerPadding ->
         when (state) {
             is PerfilUiState.Loading -> {}
+            is PerfilUiState.Error -> {
+                Box(modifier = Modifier.padding(innerPadding)) {
+                    VistaError(
+                        mensaje = (state as PerfilUiState.Error).message,
+                        onReintentar = { perfilView.cargarPerfil() }
+                    )
+                }
+            }
             else -> {
                 Column(
                     modifier = Modifier

@@ -1,5 +1,6 @@
 package com.grupo6.trego.ui.auth
 
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -7,15 +8,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.PhoneAuthProvider
+import com.google.firebase.messaging.FirebaseMessaging
 import com.grupo6.trego.data.model.GoogleLoginRequest
 import com.grupo6.trego.data.model.SmsLoginRequest
 import com.grupo6.trego.data.remote.AuthApiService
+import com.grupo6.trego.data.repository.UsuarioRepository
 import com.grupo6.trego.data.utilities.TokenManager
 import kotlinx.coroutines.launch
 
-class PhoneAuthViewModel(
+class AuthViewModel(
     private val authApiService: AuthApiService,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val usuarioRepository: UsuarioRepository
 ) : ViewModel() {
 
     var phoneNumber by mutableStateOf("")
@@ -71,6 +75,7 @@ class PhoneAuthViewModel(
                 if (response.isSuccessful && response.body() != null) {
                     val jwtDelBackend = response.body()!!.jwtToken
                     tokenManager.saveToken(jwtDelBackend)
+                    obtenerYRegistrarFcmToken()
                     onSuccess()
                 } else {
                     val errorBodyString = response.errorBody()?.string() ?: ""
@@ -102,6 +107,7 @@ class PhoneAuthViewModel(
                 if (response.isSuccessful && response.body() != null) {
                     val jwtDelBackend = response.body()!!.jwtToken
                     tokenManager.saveToken(jwtDelBackend)
+                    obtenerYRegistrarFcmToken()
                     onSuccess()
                 } else {
                     val errorBodyString = response.errorBody()?.string() ?: ""
@@ -140,5 +146,29 @@ class PhoneAuthViewModel(
             .addOnFailureListener {
                 onVerificationFailed(it.message ?: "Código incorrecto")
             }
+    }
+
+    private fun obtenerYRegistrarFcmToken() {
+        Log.d("FCM_AUTH", "Antes del getInstance de firebaseMessaging")
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val fcmToken = task.result
+                Log.d("FCM_AUTH", "Token obtenido tras login: $fcmToken")
+
+                // Lanzamos corrutina en el scope del ViewModel para la petición de red
+                viewModelScope.launch {
+                    val resultado = usuarioRepository.actualizarFcmToken(fcmToken)
+                    if (resultado.isSuccess) {
+                        Log.d("FCM_AUTH", "Token FCM registrado exitosamente en el Backend.")
+                    } else {
+                        // Nota: Si esto falla, el usuario igual está logueado en la app,
+                        // pero, noo recibirá notificaciones hasta que se vuelva a intentar.
+                        Log.e("FCM_AUTH", "Error registrando FCM", resultado.exceptionOrNull())
+                    }
+                }
+            } else {
+                Log.e("FCM_AUTH", "No se pudo obtener el token desde Firebase", task.exception)
+            }
+        }
     }
 }

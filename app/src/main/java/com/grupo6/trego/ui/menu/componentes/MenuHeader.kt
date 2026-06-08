@@ -1,15 +1,33 @@
 package com.grupo6.trego.ui.menu.componentes
 
-import android.util.Log
+import android.R.attr.rating
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -21,12 +39,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.grupo6.trego.data.model.DTORestaurante
+import com.grupo6.trego.ui.componentes.StarRatingSelector
 import com.grupo6.trego.ui.theme.TregoOrange
 
 @Composable
 fun MenuHeader(
     restaurante: DTORestaurante,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onStarClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -111,7 +131,7 @@ fun MenuHeader(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    BadgeSuperficie(icono = "⭐", texto = restaurante.calificacionProm.toString())
+                    BadgeSuperficie(icono = "⭐", texto = restaurante.calificacionProm.toString(), onClicStar = onStarClick)
                     Spacer(modifier = Modifier.width(8.dp))
 
                     BadgeSuperficie(
@@ -130,18 +150,24 @@ fun MenuHeader(
 
 // Componente auxiliar para que los Badges queden limpios en código
 @Composable
-private fun BadgeSuperficie(icono: String, texto: String, dotColor: Color? = null) {
+private fun BadgeSuperficie(icono: String, texto: String, dotColor: Color? = null, onClicStar: () -> Unit = {}) {
+
     Surface(
         shape = RoundedCornerShape(50),
         color = Color.Black.copy(alpha = 0.4f), // Fondo traslúcido elegante
-        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.2f))
+        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.2f)),
+        onClick = onClicStar
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (dotColor != null) {
-                Box(modifier = Modifier.size(8.dp).background(dotColor, CircleShape))
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(dotColor, CircleShape)
+                )
             } else if (icono.isNotEmpty()) {
                 Text(icono, fontSize = 12.sp)
             }

@@ -6,6 +6,8 @@ import com.grupo6.trego.data.model.SmsLoginRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Query
 
 interface AuthApiService {
 
@@ -20,4 +22,5 @@ interface AuthApiService {
     suspend fun loginConSMS(
         @Body body: SmsLoginRequest
     ): Response<LoginResponseDTO>
+
 }

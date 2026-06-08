@@ -3,6 +3,7 @@ package com.grupo6.trego.data.repository
 import com.grupo6.trego.data.model.DTOCliente
 import com.grupo6.trego.data.model.DTODireccion
 import com.grupo6.trego.data.model.DTOUsuario
+import com.grupo6.trego.data.model.FcmTokenRequest
 import com.grupo6.trego.data.remote.UsuarioApiService
 
 class UsuarioRepository(private val api: UsuarioApiService) {
@@ -78,6 +79,22 @@ class UsuarioRepository(private val api: UsuarioApiService) {
             } else {
                 val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
                 Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun actualizarFcmToken(token: String): Result<Unit> {
+        return try {
+            val tokenRequest = FcmTokenRequest(
+                token = token,
+            )
+            val response = api.renovarTockenFcm(tokenRequest)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Error al enviar token FCM. Código: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

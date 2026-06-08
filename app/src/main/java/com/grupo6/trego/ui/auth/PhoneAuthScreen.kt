@@ -56,7 +56,7 @@ enum class AuthStep { PHONE, VERIFY }
 fun PhoneAuthScreen(
     onAuthSuccess: () -> Unit
 ) {
-    val viewModel: PhoneAuthViewModel = koinViewModel()
+    val viewModel: AuthViewModel = koinViewModel()
     val auth = remember { FirebaseAuth.getInstance() }
     val activity = LocalContext.current as Activity
 
@@ -183,7 +183,7 @@ fun StepBubble(number: String, label: String, active: Boolean) {
 // Componente de ingreso del numero de telefono
 @Composable
 private fun PhoneStep(
-    viewModel: PhoneAuthViewModel,
+    viewModel: AuthViewModel,
     auth: FirebaseAuth,
     activity: Activity,
     callbacks: PhoneAuthProvider.OnVerificationStateChangedCallbacks
@@ -263,7 +263,7 @@ private fun PhoneStep(
 
 @Composable
 private fun VerifyStep(
-    viewModel: PhoneAuthViewModel,
+    viewModel: AuthViewModel,
     auth: FirebaseAuth,
     onAuthSuccess: () -> Unit,
 ) {

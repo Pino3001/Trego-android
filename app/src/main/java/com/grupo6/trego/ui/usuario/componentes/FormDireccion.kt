@@ -217,42 +217,18 @@ fun DireccionForm(
 
     Scaffold(
         topBar = {
-            TregoHeader {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(110.dp)
-                        .padding(horizontal = 4.dp)
-                ) {
-                    IconButton(
-                        onClick = onBack,
-                        Modifier.align(Alignment.TopStart)
-                    ) {
+            TregoHeader(
+                title = if (direccion == null) "NUEVA DIRECCIÓN" else "EDITAR DIRECCIÓN",
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver",
                             tint = Color.White
                         )
                     }
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.Center)
-                            .padding(horizontal = 56.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            if (direccion == null) "NUEVA DIRECCIÓN" else "EDITAR DIRECCIÓN",
-                            fontSize = 19.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.5.sp,
-                            color = Color.White,
-                        )
-                    }
-
                 }
-
-            }
+            )
         },
 
         ) { innerPadding ->

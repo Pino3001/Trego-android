@@ -3,22 +3,27 @@ package com.grupo6.trego.ui.pedidos
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.grupo6.trego.data.model.DTOCrearReclamoRequest
 import com.grupo6.trego.data.model.DTOPedido
 import com.grupo6.trego.data.model.EnumEstadoPedido
 import com.grupo6.trego.data.model.PedidoUiModel
+import com.grupo6.trego.data.notificaciones.PushNotificationManager
 import com.grupo6.trego.data.repository.PedidoRepository
 import com.grupo6.trego.data.repository.RestauranteRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import java.time.LocalDate
+import java.time.ZoneId
+import kotlin.time.Duration.Companion.milliseconds
 
 sealed class PedidoUiState {
     object Idle : PedidoUiState() // Estado inicial para cuando el modal está cerrado
@@ -31,7 +36,8 @@ sealed class PedidoUiState {
 
 class PedidoViewModel(
     private val repository: PedidoRepository,
-    private val repositoryRestaurante: RestauranteRepository
+    private val repositoryRestaurante: RestauranteRepository,
+    private val pushManager: PushNotificationManager
 ) : ViewModel() {
 
     private val _activosState = MutableStateFlow<PedidoUiState>(PedidoUiState.Idle)
@@ -45,45 +51,61 @@ class PedidoViewModel(
 
     private var previousActivosState: PedidoUiState = PedidoUiState.Idle
 
+    // Lock para evitar múltiples cargas simultáneas
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    // ---  ESTADOS PARA FILTROS Y BÚSQUEDA ---
+
+    // Lista original en memoria para no volver a llamar a la API al filtrar
+    private var historialOriginal: List<PedidoUiModel> = emptyList()
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
+
+    private val _selectedEstado = MutableStateFlow<EnumEstadoPedido?>(null)
+    val selectedEstado = _selectedEstado.asStateFlow()
+
+    private val _selectedDate = MutableStateFlow<LocalDate?>(null)
+    val selectedDate = _selectedDate.asStateFlow()
+
+    private val _ordenMasRecientes = MutableStateFlow(true)
+    val ordenMasRecientes = _ordenMasRecientes.asStateFlow()
+
     fun dismissActivosError() {
         _activosState.value = previousActivosState
     }
 
-    fun cargarPedidos(silencioso: Boolean = false   ) {
-        if (_activosState.value is PedidoUiState.Loading) return
+    fun cargarPedidos(silencioso: Boolean = false) {
+        if (_isRefreshing.value) return
         viewModelScope.launch {
+            actualizarPedidosInternal(silencioso)
+        }
+    }
+
+    private suspend fun actualizarPedidosInternal(silencioso: Boolean) {
+        if (_isRefreshing.value) return
+        _isRefreshing.value = true
+
+        try {
             if (!silencioso) {
                 _activosState.value = PedidoUiState.Loading
             }
 
             repository.obtenerPedidosCliente()
                 .onSuccess { todosLosPedidos ->
-                    Log.d("Pedidos", "Pedidos obtenidos: ${todosLosPedidos.size}")
-                    // Obtener una lista de IDs de restaurantes únicos (como Long para el repo)
                     val idsRestaurantes =
                         todosLosPedidos.mapNotNull { it.idRestaurante?.toLong() }.distinct()
 
-                    // Buscar los detalles de los restaurantes en paralelo
                     val restaurantesMap = coroutineScope {
                         idsRestaurantes.map { id ->
                             async {
-                                // En lugar de usar getOrNull() directo, evaluamos el resultado
                                 val resultado = repositoryRestaurante.getRestauranteDatos(id)
-
-                                resultado.onFailure { error ->
-                                    // ¡Esto te dirá si la API de restaurantes está fallando!
-                                    Log.e(
-                                        "PedidoViewModel",
-                                        "Error al cargar restaurante $id: ${error.message}"
-                                    )
-                                }
-
                                 id to resultado.getOrNull()
                             }
                         }.awaitAll().toMap()
                     }
 
-                    // Mapear tus DTOPedido a PedidoUiModel combinando los datos
                     val pedidosConRestaurante = todosLosPedidos.map { pedido ->
                         val restaurante = restaurantesMap[pedido.idRestaurante?.toLong()]
                         PedidoUiModel(
@@ -91,37 +113,38 @@ class PedidoViewModel(
                             nombreRestaurante = restaurante?.nombre ?: "Restaurante Desconocido",
                             telefonoRestaurante = restaurante?.telefono ?: "Sin teléfono"
                         )
-                    }
+                    }.sortedByDescending { it.pedido.fechaCreacion }
 
                     _activosState.value = PedidoUiState.Success(pedidosConRestaurante)
-                    Log.d("Pedidos", "Nuevo estado activo emitido con ${pedidosConRestaurante.size} elementos")
+
                 }
-                .onFailure {
+                .onFailure { error ->
                     if (!silencioso) {
-                        _activosState.value = PedidoUiState.Error(it.message ?: "Error desconocido")
+                        _activosState.value =
+                            PedidoUiState.Error(error.message ?: "Error desconocido")
                     }
                 }
+        } finally {
+            _isRefreshing.value = false
         }
     }
 
-    suspend fun esperarNuevoPedido(conteoAnterior: Int, timeOutMillis: Long = 20000L): Boolean {
-        return withTimeoutOrNull(timeOutMillis) {
-            var conseguido = false
-            while (!conseguido) {
-                // Consultamos solo la lista ligera al backend directamente
-                val resultado = repository.obtenerPedidosCliente().getOrNull()
+    suspend fun esperarNuevoPedido(timeOutMillis: Long = 15000L): Boolean {
 
-                if (resultado != null && resultado.size > conteoAnterior) {
-                    conseguido = true
-                    // Cuando confirmamos que ya llegó, hacemos UNA sola carga con datos completos (silenciosa)
-                    cargarPedidos(silencioso = true)
-                } else {
-                    // Esperamos 2.5 segundos antes de volver a preguntar para no saturar el backend
-                    delay(2500)
-                }
-            }
+        return withTimeoutOrNull(timeOutMillis.milliseconds) {
+            //  Esperamos el evento de push (si llegó mientras estábamos en la web, el 'replay' lo entrega al instante)
+            pushManager.pushEvents.first { it["estado"] == "PAGO_PROCESADO" }
+
+            // Limpiamos la memoria para que no interfiera en futuras compras
+            pushManager.limpiarEventos()
+
+            actualizarPedidosInternal(silencioso = true)
+
             true
-        } ?: false // Retorna false si se agotó el tiempo
+        } ?: run {
+            // Si a los 15 segundos no llegó nada (se cayó el internet, etc.), fallamos
+            false
+        }
     }
 
     fun cargarHistorial() {
@@ -130,32 +153,24 @@ class PedidoViewModel(
 
             repository.obtenerPedidosHistorial()
                 .onSuccess { todosLosPedidos ->
-
-                    // Obtener una lista de IDs de restaurantes únicos (como Long para el repo)
                     val idsRestaurantes =
                         todosLosPedidos.mapNotNull { it.idRestaurante?.toLong() }.distinct()
 
-                    // Buscar los detalles de los restaurantes en paralelo
                     val restaurantesMap = coroutineScope {
                         idsRestaurantes.map { id ->
                             async {
-                                // En lugar de usar getOrNull() directo, evaluamos el resultado
                                 val resultado = repositoryRestaurante.getRestauranteDatos(id)
-
                                 resultado.onFailure { error ->
-                                    // ¡Esto te dirá si la API de restaurantes está fallando!
                                     Log.e(
                                         "PedidoViewModel",
                                         "Error al cargar restaurante $id: ${error.message}"
                                     )
                                 }
-
                                 id to resultado.getOrNull()
                             }
                         }.awaitAll().toMap()
                     }
 
-                    // Mapear tus DTOPedido a PedidoUiModel combinando los datos
                     val pedidosConRestaurante = todosLosPedidos.map { pedido ->
                         val restaurante = restaurantesMap[pedido.idRestaurante?.toLong()]
                         PedidoUiModel(
@@ -163,10 +178,10 @@ class PedidoViewModel(
                             nombreRestaurante = restaurante?.nombre ?: "Restaurante Desconocido",
                             telefonoRestaurante = restaurante?.telefono ?: "Sin teléfono"
                         )
-                    }
+                    }.sortedByDescending { it.pedido.fechaCreacion }
 
-                    //  Filtrar -- Deveria de venir todo ya filtrado
-                    val historial = pedidosConRestaurante.filter {
+                    // Filtramos solo los estados base del historial y los guardamos en memoria
+                    historialOriginal = pedidosConRestaurante.filter {
                         it.pedido.estado in listOf(
                             EnumEstadoPedido.Cancelado,
                             EnumEstadoPedido.Entregado,
@@ -174,7 +189,8 @@ class PedidoViewModel(
                         )
                     }
 
-                    _historialState.value = PedidoUiState.Historial(historial)
+                    // En lugar de emitir directamente, pasamos por la función de filtrado
+                    aplicarFiltros()
                 }
                 .onFailure {
                     _historialState.value = PedidoUiState.Error(it.message ?: "Error desconocido")
@@ -201,4 +217,85 @@ class PedidoViewModel(
                 }
         }
     }
+
+    // --- FUNCIONES DE ACTUALIZACIÓN DE FILTROS ---
+
+    fun onSearchQueryChange(query: String) {
+        _searchQuery.value = query
+        aplicarFiltros()
+    }
+
+    fun toggleEstadoFiltro(estado: EnumEstadoPedido) {
+        // Si vuelve a tocar el mismo que ya está seleccionado, lo limpia (pone null), si no, asigna el nuevo
+        _selectedEstado.value = if (_selectedEstado.value == estado) null else estado
+        aplicarFiltros()
+    }
+
+    fun onDateChange(date: LocalDate?) {
+        _selectedDate.value = date
+        aplicarFiltros()
+    }
+
+    fun clearFiltros() {
+        _searchQuery.value = ""
+        _selectedEstado.value = null
+        _selectedDate.value = null
+        aplicarFiltros()
+    }
+
+    fun toggleOrden() {
+        _ordenMasRecientes.value = !_ordenMasRecientes.value
+        aplicarFiltros()
+    }
+
+    // Lógica central donde convergen la búsqueda y todos los filtros
+    private fun aplicarFiltros() {
+        val query = _searchQuery.value.trim()
+        val estadoFiltro = _selectedEstado.value
+        val fechaFiltro = _selectedDate.value
+        val masRecientesPrimero = _ordenMasRecientes.value
+
+        // Primero filtramos la lista original con los criterios existentes
+        val listaFiltrada = historialOriginal.filter { item ->
+            val coincideBusqueda = if (query.isEmpty()) true else {
+                item.nombreRestaurante.contains(query, ignoreCase = true) ||
+                        item.pedido.idPedido?.toString()?.contains(query) == true
+            }
+
+            val coincideEstado = estadoFiltro == null || item.pedido.estado == estadoFiltro
+
+            val coincideFecha = if (fechaFiltro != null) {
+                item.pedido.fechaCreacion?.toLocalDate() == fechaFiltro
+            } else {
+                true
+            }
+
+            coincideBusqueda && coincideEstado && coincideFecha
+        }
+
+        // 🚀 NUEVO: Aplicamos el ordenamiento según la preferencia del usuario
+        val listaFinal = if (masRecientesPrimero) {
+            listaFiltrada.sortedByDescending { it.pedido.fechaCreacion } // Últimos realizados primero
+        } else {
+            listaFiltrada.sortedBy { it.pedido.fechaCreacion } // Primeros realizados primero
+        }
+
+        _historialState.value = PedidoUiState.Historial(listaFinal)
+    }
+
+    fun crearReclamo(reclamo: DTOCrearReclamoRequest, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.realizarReclamo(reclamo)
+                .onSuccess {
+                    _eventChannel.send("Reclamo enviado con éxito")
+                    onSuccess()
+                }
+                .onFailure { error ->
+                    val mensaje = error.message ?: "Error desconocido"
+                    _eventChannel.send(mensaje)
+                    onSuccess()
+                }
+        }
+    }
 }
+

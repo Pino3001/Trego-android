@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.grupo6.trego.data.model.DTOProducto
+import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 
 @Composable
@@ -42,12 +43,11 @@ fun OfertaItem(producto: DTOProducto, onClick: () -> Unit) {
             .width(110.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(3.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+        elevation = CardDefaults.cardElevation(4.dp),
+        colors = CardDefaults.cardColors(containerColor = BlancoCard)
     ) {
         Box {
             Column {
-                // Imagen cuadrada
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -77,7 +77,6 @@ fun OfertaItem(producto: DTOProducto, onClick: () -> Unit) {
                     }
                 }
 
-                // Info
                 Column(
                     modifier = Modifier
                         .padding(horizontal = 1.dp, vertical = 1.dp)
@@ -113,7 +112,6 @@ fun OfertaItem(producto: DTOProducto, onClick: () -> Unit) {
                 }
             }
 
-            // Badge descuento
             producto.oferta?.descuento?.let {
                 Surface(
                     modifier = Modifier

@@ -21,6 +21,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOff
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -57,7 +60,8 @@ import com.grupo6.trego.data.utilities.RequestLocation
 import com.grupo6.trego.ui.carrito.CarritoViewModel
 import com.grupo6.trego.ui.componentes.SearchBar
 import com.grupo6.trego.ui.componentes.TregoHeader
-import com.grupo6.trego.ui.restaurantes.componentes.EmptyState
+import com.grupo6.trego.ui.componentes.VistaError
+import com.grupo6.trego.ui.componentes.VistaEstado
 import com.grupo6.trego.ui.restaurantes.componentes.FilterBottomSheet
 import com.grupo6.trego.ui.restaurantes.componentes.RestaurantItem
 import com.grupo6.trego.ui.theme.TregoOrange
@@ -73,6 +77,7 @@ fun RestaurantListScreen(
     val context = LocalContext.current
     var showFilterSheet by remember { mutableStateOf(false) }
     val locationState by viewModel.locationState.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
 
     // Incrementar este contador fuerza a RequestLocation a re-ejecutarse
     var locationRetryKey by remember { mutableStateOf(0) }
@@ -121,27 +126,20 @@ fun RestaurantListScreen(
     Scaffold(
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
-
-                TregoHeader {
-                    Column(
-                        modifier = Modifier.fillMaxWidth() .height(110.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "TREGO",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.White,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
+                // 1. La cabecera genérica con el logo y nombre
+                TregoHeader(
+                    title = "TREGO",
+                    modifier = Modifier.padding(bottom = 0.dp), // Ajuste fino
+                    bottomContent = {
                         Image(
                             painter = painterResource(id = R.drawable.tregologo),
                             contentDescription = "Logo Trego",
-                            modifier = Modifier.size(80.dp)
+                            modifier = Modifier.size(80.dp).padding(top = 4.dp)
                         )
                     }
-                }
+                )
 
+                // 2. La barra de búsqueda (que vive en la zona blanca)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -170,104 +168,120 @@ fun RestaurantListScreen(
             }
         }
     ) { innerPadding ->
-        Box(
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.refresh() },
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            when (locationState) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                when (locationState) {
 
-                LocationState.Idle,
-                LocationState.RequestingPermission -> {
-                    LoadingPlaceholder("Obteniendo tu ubicación...")
-                }
+                    LocationState.Idle,
+                    LocationState.RequestingPermission -> {
+                        LoadingPlaceholder("Obteniendo tu ubicación...")
+                    }
 
-                LocationState.PermissionDenied -> {
-                    LocationPlaceholder(
-                        message = "Permiso de ubicación denegado. Habilitalo desde la configuración.",
-                        buttonLabel = "Ir a Configuración",
-                        onButtonClick = {
-                            // Abre la pantalla de permisos de la app directamente
-                            context.startActivity(
-                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                    data = android.net.Uri.fromParts(
-                                        "package",
-                                        context.packageName,
-                                        null
-                                    )
+                    LocationState.PermissionDenied -> {
+                        VistaEstado(
+                            titulo = "Ubicación denegada",
+                            mensaje = "Permiso de ubicación denegado. Habilitalo desde la configuración para ver restaurantes cercanos.",
+                            icono = Icons.Default.LocationOff,
+                            colorIcono = Color.Gray,
+                            botonTexto = "Ir a Configuración",
+                            onAccion = {
+                                context.startActivity(
+                                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = android.net.Uri.fromParts(
+                                            "package",
+                                            context.packageName,
+                                            null
+                                        )
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    LocationState.LocationUnavailable -> {
+                        VistaEstado(
+                            titulo = "Ubicación no disponible",
+                            mensaje = "No pudimos obtener tu ubicación. Asegurate de tener el GPS activado.",
+                            icono = Icons.Default.LocationOff,
+                            colorIcono = Color.Gray,
+                            botonTexto = "Reintentar",
+                            onAccion = { locationRetryKey++ }
+                        )
+                    }
+
+                    is LocationState.Available -> {
+                        // Agregamos la condición para saber si estamos buscando por nombre
+                        if (viewModel.isSearchMode) {
+                            when (val searchState = viewModel.searchUiState) {
+                                SearchUiState.Loading -> {
+                                    LoadingPlaceholder("Buscando restaurantes...")
                                 }
-                            )
-                        }
-                    )
-                }
 
-                LocationState.LocationUnavailable -> {
-                    LocationPlaceholder(
-                        message = "No pudimos obtener tu ubicación. Asegurate de tener el GPS activado.",
-                        buttonLabel = "Reintentar",
-                        onButtonClick = { locationRetryKey++ }
-                    )
-                }
-
-                is LocationState.Available -> {
-                    // Agregamos la condición para saber si estamos buscando por nombre
-                    if (viewModel.isSearchMode) {
-                        when (val searchState = viewModel.searchUiState) {
-                            SearchUiState.Loading -> {
-                                LoadingPlaceholder("Buscando restaurantes...")
-                            }
-
-                            is SearchUiState.Success -> {
-                                RestaurantSimpleList(
-                                    restaurants = searchState.restaurants,
-                                    onRestaurantClick = onRestaurantClick
-                                )
-                            }
-
-                            is SearchUiState.Error -> EmptyState(searchState.message)
-                            SearchUiState.Empty -> EmptyState("No se encontraron restaurantes.")
-                            SearchUiState.Idle -> Unit
-                        }
-                    } else if (viewModel.isAddressSearchMode) {
-                        // Resultados de la búsqueda por dirección (searchRestaurantsByAddress)
-                        when (addressSearchState) {
-                            AddressSearchUiState.Loading -> {
-                                LoadingPlaceholder("Cargando restaurantes cercanos...")
-                            }
-
-                            is AddressSearchUiState.Success -> {
-                                RestaurantSimpleList(
-                                    restaurants = addressSearchState.restaurants,
-                                    onRestaurantClick = onRestaurantClick
-                                )
-                            }
-
-                            is AddressSearchUiState.Error -> EmptyState(addressSearchState.message)
-                            AddressSearchUiState.Empty -> EmptyState("No hay restaurantes disponibles en tu zona.")
-                            AddressSearchUiState.Idle -> Unit
-                        }
-                    } else {
-                        // El flujo paginado normal que ya tenías (Comentado para priorizar búsqueda por dirección)
-                        /*
-                        when (val refreshState = lazyRestaurantItems.loadState.refresh) {
-                            is LoadState.Loading -> {
-                                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = TregoOrange)
-                            }
-                            is LoadState.Error -> {
-                                EmptyState(refreshState.error.localizedMessage ?: "Error al conectar")
-                            }
-                            is LoadState.NotLoading -> {
-                                if (lazyRestaurantItems.itemCount == 0) {
-                                    EmptyState("No hay restaurantes disponibles en tu zona.")
-                                } else {
-                                    RestaurantPagedList(
-                                        lazyItems = lazyRestaurantItems,
+                                is SearchUiState.Success -> {
+                                    RestaurantSimpleList(
+                                        restaurants = searchState.restaurants,
                                         onRestaurantClick = onRestaurantClick
                                     )
                                 }
+
+                                is SearchUiState.Error -> {
+                                    VistaError(
+                                        mensaje = searchState.message,
+                                        onReintentar = { viewModel.onSearchSubmit() }
+                                    )
+                                }
+
+                                SearchUiState.Empty -> {
+                                    VistaEstado(
+                                        titulo = "Sin Resultados",
+                                        mensaje = "No se encontraron restaurantes con ese nombre.",
+                                        icono = Icons.Default.SearchOff,
+                                        colorIcono = Color.Gray,
+                                        onAccion = null
+                                    )
+                                }
+                                SearchUiState.Idle -> Unit
                             }
+                        } else if (viewModel.isAddressSearchMode) {
+                            // Resultados de la búsqueda por dirección (searchRestaurantsByAddress)
+                            when (addressSearchState) {
+                                AddressSearchUiState.Loading -> {
+                                    LoadingPlaceholder("Cargando restaurantes cercanos...")
+                                }
+
+                                is AddressSearchUiState.Success -> {
+                                    RestaurantSimpleList(
+                                        restaurants = addressSearchState.restaurants,
+                                        onRestaurantClick = onRestaurantClick
+                                    )
+                                }
+
+                                is AddressSearchUiState.Error -> {
+                                    VistaError(
+                                        mensaje = addressSearchState.message,
+                                        onReintentar = { viewModel.refresh() }
+                                    )
+                                }
+
+                                AddressSearchUiState.Empty -> {
+                                    VistaEstado(
+                                        titulo = "Zona sin cobertura",
+                                        mensaje = "Lo sentimos, no hay restaurantes disponibles en tu zona actualmente.",
+                                        icono = Icons.Default.Map,
+                                        colorIcono = Color.Gray,
+                                        onAccion = null
+                                    )
+                                }
+                                AddressSearchUiState.Idle -> Unit
+                            }
+                        } else {
                         }
-                        */
                     }
                 }
             }
@@ -380,52 +394,3 @@ private fun RestaurantPagedList(
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// Sub-composable: placeholder genérico con botón de acción
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun LocationPlaceholder(
-    message: String,
-    buttonLabel: String,
-    onButtonClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = Icons.Default.LocationOff,
-            contentDescription = null,
-            tint = TregoOrange,
-            modifier = Modifier.size(64.dp)
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = "Necesitamos tu ubicación",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = message,
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center,
-            color = Color.Gray
-        )
-        Spacer(Modifier.height(24.dp))
-        Button(
-            onClick = onButtonClick,
-            colors = ButtonDefaults.buttonColors(containerColor = TregoOrange)
-        ) {
-            Text(buttonLabel, color = Color.White)
-        }
-    }
-
-}
-
