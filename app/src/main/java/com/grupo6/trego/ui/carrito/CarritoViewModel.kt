@@ -1,6 +1,7 @@
 package com.grupo6.trego.ui.carrito
 
 import CarritoRepository
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -131,31 +132,12 @@ class CarritoViewModel(
     fun confirmarModal(item: DTOProductoPedido) {
         viewModelScope.launch {
             uiState = CarritoUiState.Cargando
-
-            val request = DTOProductoPedido(
-                producto = DTOProductoSimplificado(
-                    idProducto = item.producto?.idProducto ?: 0,
-                    idRestaurante = item.producto?.idRestaurante ?: restauranteId?.toInt(),
-                    precio = item.producto?.precio,
-                    nombre = item.producto?.nombre ?: "",
-                    urlImagen = item.producto?.urlImagen ?: "",
-                    precioOferta = item.producto?.precioOferta,
-                    ingredientes = item.producto?.ingredientes ?: emptyList(),
-                    descripcion = null
-                ),
-                cantidad = item.cantidad ?: 1,
-                ingredientes = item.ingredientes,
-                subtotal = item.subtotal,
-                observaciones = item.observaciones,
-                cantidadDisponible = item.cantidadDisponible
-            )
-
             // ¿El producto ya existe en el carrito?
             val existe = _items.any { it.producto?.idProducto == item.producto?.idProducto }
 
             if (existe) {
                 // EDITAR → modificar, no agregar
-                repository.modificarProducto(request)
+                repository.modificarProducto(item)
                     .onSuccess { lineaActualizada ->
                         if (lineaActualizada != null) {
                             val index = _items.indexOfFirst {
@@ -173,7 +155,7 @@ class CarritoViewModel(
                     }
             } else {
                 // NUEVO → agregar
-                repository.agregarProducto(request)
+                repository.agregarProducto(item)
                     .onSuccess { carrito ->
                         _items.clear()
                         _items.addAll(carrito.productos ?: emptyList())
@@ -197,26 +179,18 @@ class CarritoViewModel(
             return
         }
         viewModelScope.launch {
-            val precioUnitario: Float = (item.producto?.precioOferta ?: item.producto?.precio) ?: 0f
+            val precioUnitario: Float = (item.producto?.precio) ?: 0f
             val nuevoSubtotal = precioUnitario * nuevaCantidad
             // Para modificar, enviamos idProducto en la raíz
             val request = DTOProductoPedido(
-                producto = DTOProductoSimplificado(
-                    idProducto = item.producto?.idProducto ?: 0,
-                    idRestaurante = item.producto?.idRestaurante ?: restauranteId?.toInt(),
-                    precio = item.producto?.precio,
-                    nombre = item.producto?.nombre ?: "",
-                    urlImagen = item.producto?.urlImagen ?: "",
-                    precioOferta = item.producto?.precioOferta,
-                    ingredientes = item.producto?.ingredientes ?: emptyList(),
-                    descripcion = null
-                ),
+                producto = item.producto,
                 cantidad = nuevaCantidad,
                 ingredientes = item.ingredientes,
                 subtotal = nuevoSubtotal,
                 observaciones = item.observaciones,
                 cantidadDisponible = item.cantidadDisponible
             )
+            Log.e("Request", request.toString())
             repository.modificarProducto(request)
                 .onSuccess { lineaActualizada ->
                     if (lineaActualizada != null) {
@@ -244,16 +218,7 @@ class CarritoViewModel(
     fun eliminarItem(item: DTOProductoPedido) {
         viewModelScope.launch {
             val request = DTOProductoPedido(
-                producto = DTOProductoSimplificado(
-                    idProducto = item.producto?.idProducto ?: 0,
-                    idRestaurante = item.producto?.idRestaurante ?: restauranteId?.toInt(),
-                    precio = item.producto?.precio,
-                    nombre = item.producto?.nombre ?: "",
-                    urlImagen = item.producto?.urlImagen ?: "",
-                    precioOferta = item.producto?.precioOferta,
-                    ingredientes = item.producto?.ingredientes ?: emptyList(),
-                    descripcion = null
-                ),
+                producto = item.producto,
                 cantidad = item.cantidad ?: 1,
                 ingredientes = item.ingredientes,
                 subtotal = item.subtotal,

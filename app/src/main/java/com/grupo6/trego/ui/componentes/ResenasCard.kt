@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -20,30 +19,47 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.grupo6.trego.data.model.DTOComentario
 import com.grupo6.trego.ui.theme.TregoOrange
-import java.time.format.DateTimeFormatter
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @Composable
 fun ResenaCard(resena: DTOComentario) {
-    val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
     val iniciales = resena.nombreCliente
         ?.split(" ")
         ?.take(2)
         ?.joinToString("") { it.firstOrNull()?.uppercaseChar()?.toString() ?: "" }
 
-    Row (
+    fun String?.formatearFecha(): String {
+        if (this == null) return ""
+        return try {
+            val entrada = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            val salida = SimpleDateFormat("dd/MM/yy", Locale.getDefault())
+            salida.format(entrada.parse(this)!!)
+        } catch (e: Exception) {
+            this
+        }
+    }
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Avatar con iniciales
         Box(
             modifier = Modifier
                 .size(38.dp)
                 .background(TregoOrange.copy(alpha = 0.12f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(iniciales ?: "", modifier = Modifier.padding(4.dp), fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TregoOrange)
+            contentAlignment = Alignment.Center,
+
+            ) {
+            Text(
+                iniciales ?: "",
+                modifier = Modifier.padding(4.dp),
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                color = TregoOrange
+            )
         }
 
         Column(
@@ -56,7 +72,7 @@ fun ResenaCard(resena: DTOComentario) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(resena.nombreCliente ?: "", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                Text(resena.fechaCreacion ?: "")
+                Text(resena.fechaCreacion.formatearFecha(), fontSize = 12.sp)
             }
 
             StarRatingDisplay(rating = resena.calificacion ?: 0, size = 13.dp)

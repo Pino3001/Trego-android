@@ -181,7 +181,7 @@ fun ProductoDetalleModal(
                     Text("Precio unidad", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        "${(item.producto?.precioOferta ?: item.producto?.precio)?.toInt()}$",
+                        "${(item.producto?.precio)?.toInt()}$",
                         color = TregoOrange,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
@@ -192,19 +192,12 @@ fun ProductoDetalleModal(
 
             Spacer(Modifier.height(8.dp))
 
-            // Ingredientes
-            Text("Quitar ingredientes", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-            Spacer(Modifier.height(4.dp))
+            if (item.producto?.ingredientes?.isEmpty() == true) {
+                Text("Ingredientes opcionales", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                Spacer(Modifier.height(4.dp))
 
-            val ingredientes = item.producto?.ingredientes
-            if (ingredientes.isNullOrEmpty()) {
-                Text(
-                    "Este producto no tiene ingredientes registrados",
-                    fontSize = 13.sp,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
-            } else {
+                val ingredientes = item.producto.ingredientes
+
                 ingredientes.chunked(4).forEach { fila ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -232,6 +225,7 @@ fun ProductoDetalleModal(
                 }
             }
 
+
             Spacer(Modifier.height(8.dp))
 
             // Comentario — siempre visible, FIX del bug del ?.let
@@ -254,7 +248,7 @@ fun ProductoDetalleModal(
 
             // Subtotal
             val precioUnitario =
-                (item.producto?.precioOferta ?: item.producto?.precio)?.toInt() ?: 0
+                (item.producto?.precio?.toInt() ?: 0)
             val subtotal = precioUnitario * cantidad
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -277,7 +271,7 @@ fun ProductoDetalleModal(
                         item.copy(
                             cantidad = cantidad,
                             observaciones = comentario.ifBlank { null },
-                            ingredientes = ingredientesQuitados.toList(),  // FIX: Set → List
+                            ingredientes = ingredientesQuitados.toList(),
                             subtotal = subtotal.toFloat()
                         )
                     )

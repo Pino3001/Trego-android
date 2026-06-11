@@ -86,15 +86,13 @@ fun MenuHeader(
                 )
         )
 
-        // 3. Contenido protegido
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding() // Protege solo los botones y textos
+                .statusBarsPadding()
                 .padding(bottom = 16.dp),
-            verticalArrangement = Arrangement.SpaceBetween // Separa el botón de volver del título
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Botón volver
             IconButton(
                 onClick = onBack,
                 modifier = Modifier.padding(start = 8.dp, top = 8.dp)
@@ -106,7 +104,6 @@ fun MenuHeader(
                 )
             }
 
-            // Título y Badges pegados abajo
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -141,7 +138,7 @@ fun MenuHeader(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    BadgeSuperficie(icono = "🍽️", texto = restaurante.categoria.toString())
+                    BadgeSuperficie(icono = "🍽️", texto = restaurante.categoria.toString() ?: "Sin categoría")
                 }
             }
         }
@@ -159,7 +156,7 @@ private fun BadgeSuperficie(icono: String, texto: String, dotColor: Color? = nul
         onClick = onClicStar
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (dotColor != null) {

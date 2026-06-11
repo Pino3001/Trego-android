@@ -58,7 +58,7 @@ class MenuViewModel(
                             ofertas = ofertas,
                             resenas = emptyList()
                         )
-
+                        Log.e("Load", restaurante.productos.toString())
                         loadResenas(restaurantId)
                     }
                 }
@@ -85,26 +85,59 @@ class MenuViewModel(
 
 
     fun enviarResena(restauranteId: Long, calificacion: Int, texto: String) {
+        updateSuccess { copy(enviandoResena = true) }
+
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
         val fechaActual = LocalDateTime.now().format(formatter)
         val nuevoComentario = DTOComentario(
             null,
             texto,
             restauranteId,
-            calificacion,   // puntuacion
+            calificacion,
             fechaActual
         )
+
         viewModelScope.launch {
-            updateSuccess { copy(enviandoResena = true) }
-            repository.setComentario(nuevoComentario)
-                .onSuccess { comentarioCreado ->
-                    updateSuccess {
-                        copy(resenas = listOf(comentarioCreado) + resenas, enviandoResena = false)
+            repository.yaComentoUsuario(restauranteId)
+                .onSuccess { comento ->
+                    if (!comento) {
+                        repository.setComentario(nuevoComentario)
+                            .onSuccess { comentarioCreado ->
+                                updateSuccess {
+                                    copy(
+                                        resenas = listOf(comentarioCreado) + resenas,
+                                        enviandoResena = false
+                                    )
+                                }
+                                _uiEvent.send(
+                                    MenuUiEvent.ShowSnackbar(
+                                        "Reseña enviada correctamente"
+                                    )
+                                )
+                                actualizarPromedio(restauranteId)
+                            }
+                            .onFailure { exception ->
+                                updateSuccess { copy(enviandoResena = false) }
+                                _uiEvent.send(
+                                    MenuUiEvent.ShowSnackbar(
+                                        exception.message ?: "Error al enviar la reseña"
+                                    )
+                                )
+                            }
+                    } else {
+                        updateSuccess { copy(enviandoResena = false) }
+                        _uiEvent.send(
+                            MenuUiEvent.ShowSnackbar("Ya has comentado en este restaurante")
+                        )
                     }
                 }
                 .onFailure { exception ->
                     updateSuccess { copy(enviandoResena = false) }
-                    _uiEvent.send(MenuUiEvent.ShowSnackbar(exception.message ?: "Error al enviar"))
+                    _uiEvent.send(
+                        MenuUiEvent.ShowSnackbar(
+                            exception.message ?: "Error al comprobar el usuario"
+                        )
+                    )
                 }
         }
     }
@@ -131,6 +164,24 @@ class MenuViewModel(
     // selectOrden también cierra el dialog
     fun selectOrden(orden: OrdenPrecio) = updateSuccess {
         copy(ordenPrecio = orden, showOrdenDialog = false)
+    }
+
+    fun actualizarPromedio(restauranteId: Long) {
+        viewModelScope.launch {
+            repository.getCalificacionPromedio(restauranteId.toInt())
+                .onSuccess { nuevoPromedio ->
+                    updateSuccess {
+                        copy(restaurante = restaurante.copy(calificacionProm = nuevoPromedio))
+                    }
+                }
+                .onFailure { exception ->
+                    _uiEvent.send(
+                        MenuUiEvent.ShowSnackbar(
+                            exception.message ?: "Error al actualizar el promedio"
+                        )
+                    )
+                }
+        }
     }
 }
 

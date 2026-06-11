@@ -132,4 +132,41 @@ class RestauranteRepository(
         }
     }
 
+    suspend fun yaComentoUsuario(idRestaurante: Long): Result<Boolean> {
+        return try {
+            val response = api.yaComentoUsuario(idRestaurante.toInt())
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null) {
+                    Result.success(requireNotNull(body["yaComento"]))
+                } else {
+                    Result.failure(Exception("Respuesta vacía"))
+                }
+            } else {
+                val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getCalificacionPromedio(idRestaurante: Int): Result<Float> {
+        return try {
+            val response = api.obtenerCalificacion(idRestaurante)
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null) {
+                    Result.success(body.toFloat())
+                } else {
+                    Result.failure(Exception("Respuesta vacía"))
+                }
+            } else {
+                val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

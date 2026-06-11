@@ -225,23 +225,43 @@ fun MenuScreen(
                                         Button(
                                             onClick = menuViewModel::showOrdenDialog,
                                             colors = ButtonDefaults.buttonColors(
-                                                containerColor = if (state.ordenPrecio != OrdenPrecio.NINGUNO) Color(0xFF1E2A3A) else TregoOrange
+                                                containerColor = if (state.ordenPrecio != OrdenPrecio.NINGUNO) Color(
+                                                    0xFF1E2A3A
+                                                ) else TregoOrange
                                             ),
                                             shape = RoundedCornerShape(8.dp),
                                             contentPadding = PaddingValues(horizontal = 12.dp)
                                         ) {
-                                            Icon(Icons.Default.SwapVert, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Icon(
+                                                Icons.Default.SwapVert,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
                                             Spacer(Modifier.width(4.dp))
-                                            Text(text = if (state.ordenPrecio == OrdenPrecio.NINGUNO) "Ordenar" else "Filtro activo", fontSize = 13.sp)
+                                            Text(
+                                                text = if (state.ordenPrecio == OrdenPrecio.NINGUNO) "Ordenar" else "Filtro activo",
+                                                fontSize = 13.sp
+                                            )
                                         }
 
-                                        Box(modifier = Modifier.height(24.dp).width(1.dp).background(Color.LightGray))
+                                        Box(
+                                            modifier = Modifier
+                                                .height(24.dp)
+                                                .width(1.dp)
+                                                .background(Color.LightGray)
+                                        )
 
                                         state.categorias.forEach { categoria ->
                                             FilterChip(
                                                 selected = state.categoriaSeleccionada == categoria,
                                                 onClick = { menuViewModel.selectCategoria(categoria) },
-                                                label = { Text(categoria, fontSize = 13.sp, fontWeight = FontWeight.Medium) },
+                                                label = {
+                                                    Text(
+                                                        categoria,
+                                                        fontSize = 13.sp,
+                                                        fontWeight = FontWeight.Medium
+                                                    )
+                                                },
                                                 colors = FilterChipDefaults.filterChipColors(
                                                     selectedContainerColor = Color(0xFF1E2A3A),
                                                     selectedLabelColor = Color.White
@@ -264,7 +284,11 @@ fun MenuScreen(
                                             state.subcategoriasDisponibles.forEach { subcategoria ->
                                                 FilterChip(
                                                     selected = state.subcategoriaSeleccionada == subcategoria,
-                                                    onClick = { menuViewModel.selectSubcategoria(subcategoria) },
+                                                    onClick = {
+                                                        menuViewModel.selectSubcategoria(
+                                                            subcategoria
+                                                        )
+                                                    },
                                                     label = {
                                                         Text(
                                                             text = subcategoria,
@@ -336,10 +360,12 @@ fun MenuScreen(
                                     ) { producto ->
                                         ProductoItem(
                                             producto = producto,
-                                            onAgregar = { carritoViewModel.abrirModalNuevoProducto(
-                                                productoSimplificado = producto.toSimplificado(),
-                                                restaurante = state.restaurante
-                                            ) })
+                                            onAgregar = {
+                                                carritoViewModel.abrirModalNuevoProducto(
+                                                    productoSimplificado = producto.toSimplificado(),
+                                                    restaurante = state.restaurante
+                                                )
+                                            })
                                     }
                                 }
 
@@ -439,16 +465,22 @@ fun MenuScreen(
                         item {
                             ResenasHeader(
                                 resenas = state.resenas,
-                                promedio = state.restaurante.calificacionProm ?: 0f
+                                promedio = state.restaurante.calificacionProm ?: 0f,
+                                onClick = { abrirStar = !abrirStar }
                             )
                         }
 
                         itemsIndexed(
                             items = state.resenas,
-                            key = { _, r -> "${r.nombreCliente}_${r.fechaCreacion}" }
+                            key = { index, r -> "${r.nombreCliente}_${r.fechaCreacion}" }  // clave única por repetición
                         ) { index, resena ->
                             ResenaCard(resena = resena)
                             if (index < state.resenas.lastIndex) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    color = Color(0xFFF5F5F5)
+                                )
+                            } else {
                                 HorizontalDivider(
                                     modifier = Modifier.padding(horizontal = 16.dp),
                                     color = Color(0xFFF5F5F5)

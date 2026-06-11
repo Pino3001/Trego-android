@@ -52,8 +52,19 @@ interface RestaurantApiService {
         @Query("idRestaurante") idRestaurante: Int
     ): Response<List<DTOComentario>>
 
+    @GET("restaurantes/comentarios/yaComente")
+    suspend fun yaComentoUsuario(
+        @Query("idRestaurante") idRestaurante: Int
+    ): Response<Map<String, Boolean>>
+
     @POST("restaurantes/comentarios/agregar")
     suspend fun crearComentario(
         @Body request: DTOComentario
     ): Response<DTOComentario>
+
+    @GET("restaurantes/calificacion/obtener/{id}")
+    suspend fun obtenerCalificacion(
+        @Path("id") id: Int,
+        @Query("esRestaurante") esRestaurante: Boolean = false
+    ): Response<Int>
 }

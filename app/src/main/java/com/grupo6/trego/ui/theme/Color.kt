@@ -3,6 +3,7 @@ package com.grupo6.trego.ui.theme
 import androidx.compose.ui.graphics.Color
 
 val TregoOrange = Color(0xFFE15E01)
+val TregoOrangeClaro = Color(0xFFF39A5B)
 val BlancoCard = Color(0xFFF6F6F6)
 val onCancelar = Color(0xFF411A8F)
 val TregoSecondary = Color(0xFF274480)
