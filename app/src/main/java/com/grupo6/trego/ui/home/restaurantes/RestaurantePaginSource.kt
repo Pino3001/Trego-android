@@ -1,4 +1,4 @@
-package com.grupo6.trego.ui.restaurantes
+package com.grupo6.trego.ui.home.restaurantes
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState

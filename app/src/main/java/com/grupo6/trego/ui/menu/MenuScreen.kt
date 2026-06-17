@@ -75,11 +75,11 @@ fun MenuScreen(
     restauranteId: Long,
     navController: NavController,
 ) {
-    val menuViewModel: MenuViewModel = koinViewModel()
-    val uiState by menuViewModel.uiState.collectAsStateWithLifecycle()
-
     val activity = LocalContext.current as? ComponentActivity
         ?: error("ComponentActivity no disponible")
+    val menuViewModel: MenuViewModel = koinViewModel(viewModelStoreOwner = activity)
+    val uiState by menuViewModel.uiState.collectAsStateWithLifecycle()
+
     val carritoViewModel: CarritoViewModel = koinViewModel(viewModelStoreOwner = activity)
     var abrirStar by remember { mutableStateOf(false) }
     var rating by remember { mutableStateOf(0) }
@@ -92,6 +92,12 @@ fun MenuScreen(
                 is MenuUiEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(event.message)
                 }
+                is MenuUiEvent.AbrirModalProducto -> {
+                    (menuViewModel.uiState.value as? MenuUiState.Success)?.restaurante?.let { rest ->
+                        carritoViewModel.abrirModalNuevoProducto(event.producto, rest)
+                    }
+                }
+                else -> Unit
             }
         }
     }
@@ -193,10 +199,10 @@ fun MenuScreen(
                                     ) {
                                         items(
                                             items = state.ofertas,
-                                            key = { it.idProducto!! }) { oferta ->
+                                            key = { it.idProducto }) { oferta ->
                                             OfertaItem(producto = oferta, onClick = {
                                                 carritoViewModel.abrirModalNuevoProducto(
-                                                    productoSimplificado = oferta.toSimplificado(),
+                                                    producto = oferta,
                                                     restaurante = state.restaurante
                                                 )
                                             })
@@ -356,13 +362,13 @@ fun MenuScreen(
 
                                     items(
                                         items = state.productosFiltrados,
-                                        key = { it.idProducto!! }
+                                        key = { it.idProducto }
                                     ) { producto ->
                                         ProductoItem(
                                             producto = producto,
                                             onAgregar = {
                                                 carritoViewModel.abrirModalNuevoProducto(
-                                                    productoSimplificado = producto.toSimplificado(),
+                                                    producto = producto,
                                                     restaurante = state.restaurante
                                                 )
                                             })
@@ -397,7 +403,7 @@ fun MenuScreen(
                                                 producto = producto,
                                                 onAgregar = {
                                                     carritoViewModel.abrirModalNuevoProducto(
-                                                        productoSimplificado = producto.toSimplificado(),
+                                                        producto = producto,
                                                         restaurante = state.restaurante
                                                     )
                                                 })
@@ -451,7 +457,7 @@ fun MenuScreen(
                                                     producto = producto,
                                                     onAgregar = {
                                                         carritoViewModel.abrirModalNuevoProducto(
-                                                            productoSimplificado = producto.toSimplificado(),
+                                                            producto = producto,
                                                             restaurante = state.restaurante
                                                         )
                                                     })
@@ -472,7 +478,7 @@ fun MenuScreen(
 
                         itemsIndexed(
                             items = state.resenas,
-                            key = { index, r -> "${r.nombreCliente}_${r.fechaCreacion}" }  // clave única por repetición
+                            key = { index, r -> "${r.nombreCliente}_${r.fechaCreacion}_$index" }
                         ) { index, resena ->
                             ResenaCard(resena = resena)
                             if (index < state.resenas.lastIndex) {

@@ -6,11 +6,15 @@ import com.grupo6.trego.data.notificaciones.PushNotificationManager
 import com.grupo6.trego.data.remote.AuthApiService
 import com.grupo6.trego.data.remote.CarritoApiService
 import com.grupo6.trego.data.remote.PedidoApiService
+import com.grupo6.trego.data.remote.ProductosApiService
 import com.grupo6.trego.data.remote.RestaurantApiService
+import com.grupo6.trego.data.remote.SubCategoriaApiService
 import com.grupo6.trego.data.remote.UsuarioApiService
 import com.grupo6.trego.data.repository.CloudinaryRepository
 import com.grupo6.trego.data.repository.PedidoRepository
+import com.grupo6.trego.data.repository.ProductoRepository
 import com.grupo6.trego.data.repository.RestauranteRepository
+import com.grupo6.trego.data.repository.SubcategoriaRepository
 import com.grupo6.trego.data.repository.UsuarioRepository
 import com.grupo6.trego.data.utilities.AuthInterceptor
 import com.grupo6.trego.data.utilities.LocalDateTimeAdapter
@@ -20,7 +24,11 @@ import com.grupo6.trego.ui.auth.AuthViewModel
 import com.grupo6.trego.ui.carrito.CarritoViewModel
 import com.grupo6.trego.ui.menu.MenuViewModel
 import com.grupo6.trego.ui.pedidos.PedidoViewModel
-import com.grupo6.trego.ui.restaurantes.RestauranteViewModel
+import com.grupo6.trego.ui.home.restaurantes.RestauranteViewModel
+import com.grupo6.trego.ui.home.platos.SubCategoriaViewModel
+import com.grupo6.trego.ui.home.platos.PlatoViewModel
+import com.grupo6.trego.ui.home.HomeViewModel
+import com.grupo6.trego.ui.home.ofertas.OfertaViewModel
 import com.grupo6.trego.ui.usuario.PerfilViewModel
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -31,6 +39,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.time.LocalDateTime
 import java.time.LocalTime
+import kotlin.jvm.java
 
 val appModule = module {
     val logging = HttpLoggingInterceptor().apply {
@@ -73,6 +82,8 @@ val appModule = module {
     single { get<Retrofit>().create(CarritoApiService::class.java) }
     single { get<Retrofit>().create(PedidoApiService::class.java) }
     single { get<Retrofit>().create(UsuarioApiService::class.java) }
+    single { get<Retrofit>().create(SubCategoriaApiService::class.java) }
+    single { get<Retrofit>().create(ProductosApiService::class.java) }
 
     // Repositorios
     single { RestauranteRepository(get()) }
@@ -81,6 +92,9 @@ val appModule = module {
     single { UsuarioRepository(get()) }
     single { CloudinaryRepository(get(), get()) }
     single { PushNotificationManager() }
+    single { SubcategoriaRepository(get()) }
+    single { ProductoRepository(get()) }
+
 
     // ViewModels
     viewModel { RestauranteViewModel(get()) }
@@ -89,5 +103,9 @@ val appModule = module {
     viewModel { AuthViewModel(get(), get(), get()) }
     viewModel { PedidoViewModel(get(), get(), get()) }
     viewModel { PerfilViewModel(get(), get()) }
+    viewModel { SubCategoriaViewModel(get()) }
+    viewModel { PlatoViewModel(get()) }
+    viewModel { OfertaViewModel(get()) }
+    viewModel { HomeViewModel() }
 
 }

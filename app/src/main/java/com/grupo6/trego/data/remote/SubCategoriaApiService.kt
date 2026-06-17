@@ -7,5 +7,5 @@ import retrofit2.http.GET
 interface SubCategoriaApiService {
 
     @GET("subcategorias/listar")
-    suspend fun listarSubcategorias(): Response<DTOSubCategoria>
+    suspend fun listarSubcategorias(): Response<List<DTOSubCategoria>>
 }

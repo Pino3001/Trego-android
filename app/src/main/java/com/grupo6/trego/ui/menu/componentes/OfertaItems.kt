@@ -51,11 +51,11 @@ fun OfertaItem(producto: DTOProducto, onClick: () -> Unit) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(1.7f)  // siempre cuadrada sin importar el ancho
+                        .aspectRatio(1.7f) 
                 ) {
                     if (producto.urlImagen != null) {
                         AsyncImage(
-                            model = producto.urlImagen,
+                            model = producto.oferta?.urlImagen ?: producto.urlImagen,
                             contentDescription = producto.nombre,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
@@ -102,7 +102,7 @@ fun OfertaItem(producto: DTOProducto, onClick: () -> Unit) {
                             textDecoration = TextDecoration.LineThrough
                         )
                         Text(
-                            text = "${producto.calcularPrecioConDescuento().toInt()}$",
+                            text = "${producto.calcularPrecioConDescuento()}$",
                             fontSize = 12.sp,
                             color = TregoOrange,
                             fontWeight = FontWeight.Bold

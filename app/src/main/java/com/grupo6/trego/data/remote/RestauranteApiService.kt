@@ -67,4 +67,6 @@ interface RestaurantApiService {
         @Path("id") id: Int,
         @Query("esRestaurante") esRestaurante: Boolean = false
     ): Response<Int>
+
+
 }

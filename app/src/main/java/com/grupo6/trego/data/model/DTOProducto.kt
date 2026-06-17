@@ -3,41 +3,31 @@ package com.grupo6.trego.data.model
 import java.time.LocalDateTime
 
 data class DTOProducto(
-    val idProducto: Int,
-    val nombre: String?,
-    val descripcion: String?,
-    val precio: Float?,
-    val urlImagen: String?,
-    val categoria: EnumCategoriaProducto?,
-    val disponible: Boolean?,
-    val idRestaurante: Int?,
-    val cantidadDisponible: Int?,
-    val ingredientes: List<DTOIngrediente>?,
-    val tipo: EnumTipoProducto?,
-    val plato: PlatoDTO?,
-    val articulo: ArticuloDTO?,
-    val combo: ComboDTO?,
+    val idProducto: Int,               // sigue siendo obligatorio
+    val nombre: String? = null,
+    val descripcion: String? = null,
+    val precio: Float? = null,
+    val urlImagen: String? = null,
+    val categoria: EnumCategoriaProducto? = null,
+    val disponible: Boolean? = null,
+    val idRestaurante: Int? = null,
+    val cantidadDisponible: Int? = null,
+    val ingredientes: List<DTOIngrediente>? = null,
+    val tipo: EnumTipoProducto? = null,
+    val ofertaActiva: Boolean? = null,
+    val plato: DTOPlato? = null,
+    val articulo: DTOArticulo? = null,
+    val combo: DTOCombo? = null,
     val oferta: DTOOferta? = null,
     val subCategoria: DTOSubCategoria? = null
 ) {
-    fun toSimplificado(): DTOProductoSimplificado {
-        val precio = calcularPrecioConDescuento()
-        return DTOProductoSimplificado(
-            idProducto = idProducto,
-            idRestaurante = idRestaurante,
-            nombre = nombre,
-            precio = precio,
-            urlImagen = urlImagen,
-            oferta = oferta,
-            ingredientes = ingredientes,
-            descripcion = descripcion
-        )
-    }
+    fun calcularPrecioConDescuento(): Int {
+        val precioBase = this.precio ?: 0f
 
-    fun calcularPrecioConDescuento(): Float {
-        // Si no hay oferta o el descuento no es positivo, precio original
-        if (this.oferta == null || this.oferta.descuento!! <= 0) {
-            return this.precio!!
+        // Si no hay oferta, el descuento no es positivo, o la oferta no está activa → precio original
+        val descuento = this.oferta?.descuento ?: 0f
+        if (this.oferta == null || descuento <= 0f || this.ofertaActiva != true) {
+            return precioBase.toInt()
         }
 
         // Validación de fechas
@@ -47,22 +37,20 @@ data class DTOProducto(
 
         // Si hay fecha de inicio y aún no empezó, no aplica
         if (inicio != null && ahora.isBefore(inicio)) {
-            return this.precio!!
+            return precioBase.toInt()
         }
         // Si hay fecha de fin y ya finalizó, no aplica
         if (fin != null && ahora.isAfter(fin)) {
-            return this.precio!!
+            return precioBase.toInt()
         }
 
-        // Si llegamos acá, la oferta es válida: aplicamos el descuento
-        val factorDescuento = this.oferta.descuento / 100.0f
-        val montoDescuento = this.precio!! * factorDescuento
-        return this.precio - montoDescuento
+        // Oferta vigente, activa y con descuento > 0: aplicamos el descuento
+        val factorDescuento = descuento / 100f
+        val montoDescuento = precioBase * factorDescuento
+        return precioBase.toInt() - montoDescuento.toInt()
     }
 }
 
 enum class EnumTipoProducto {
     Plato, Articulo, Combo
 }
-
-

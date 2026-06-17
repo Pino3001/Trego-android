@@ -7,11 +7,12 @@ import com.grupo6.trego.data.model.DTOComentario
 import com.grupo6.trego.data.model.DTOProducto
 import com.grupo6.trego.data.model.DTORestaurante
 import com.grupo6.trego.data.repository.RestauranteRepository
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
@@ -21,11 +22,13 @@ class MenuViewModel(
     private val repository: RestauranteRepository
 ) : ViewModel() {
 
+    private var productoASeleccionar: DTOProducto? = null
+
     private val _uiState = MutableStateFlow<MenuUiState>(MenuUiState.Loading)
     val uiState: StateFlow<MenuUiState> = _uiState.asStateFlow()
 
-    private val _uiEvent = Channel<MenuUiEvent>(Channel.BUFFERED)
-    val uiEvent = _uiEvent.receiveAsFlow()
+    private val _uiEvent = MutableSharedFlow<MenuUiEvent>(extraBufferCapacity = 64)
+    val uiEvent: SharedFlow<MenuUiEvent> = _uiEvent.asSharedFlow()
 
     private inline fun updateSuccess(crossinline update: MenuUiState.Success.() -> MenuUiState.Success) {
         _uiState.update { currentState ->
@@ -38,14 +41,15 @@ class MenuViewModel(
     }
 
     fun loadMenu(restaurantId: Long) {
-        Log.e("Load", restaurantId.toString())
         viewModelScope.launch {
             _uiState.value = MenuUiState.Loading
 
             repository.getRestaurantMenu(restaurantId)
                 .onSuccess { restaurante ->
                     val productos = restaurante.productos ?: emptyList()
-                    val ofertas = productos.filter { it.oferta != null }
+                    val ofertas = productos.filter {
+                        it.oferta != null && it.ofertaActiva == true
+                    }
 
                     if (productos.isEmpty()) {
                         _uiState.value = MenuUiState.SinProductos
@@ -60,6 +64,15 @@ class MenuViewModel(
                         )
                         Log.e("Load", restaurante.productos.toString())
                         loadResenas(restaurantId)
+
+                        productoASeleccionar?.let { prod ->
+                            if (prod.idRestaurante?.toLong() == restaurantId) {
+                                viewModelScope.launch {
+                                    _uiEvent.emit(MenuUiEvent.AbrirModalProducto(prod))
+                                }
+                                productoASeleccionar = null
+                            }
+                        }
                     }
                 }
                 .onFailure { e ->
@@ -78,7 +91,7 @@ class MenuViewModel(
                 }
                 .onFailure { exception ->
                     val errorMsg = exception.message ?: "No se pudieron cargar las reseñas"
-                    _uiEvent.send(MenuUiEvent.ShowSnackbar(errorMsg))
+                    _uiEvent.tryEmit(MenuUiEvent.ShowSnackbar(errorMsg))
                 }
         }
     }
@@ -109,7 +122,7 @@ class MenuViewModel(
                                         enviandoResena = false
                                     )
                                 }
-                                _uiEvent.send(
+                                _uiEvent.tryEmit(
                                     MenuUiEvent.ShowSnackbar(
                                         "Reseña enviada correctamente"
                                     )
@@ -118,7 +131,7 @@ class MenuViewModel(
                             }
                             .onFailure { exception ->
                                 updateSuccess { copy(enviandoResena = false) }
-                                _uiEvent.send(
+                                _uiEvent.tryEmit(
                                     MenuUiEvent.ShowSnackbar(
                                         exception.message ?: "Error al enviar la reseña"
                                     )
@@ -126,14 +139,14 @@ class MenuViewModel(
                             }
                     } else {
                         updateSuccess { copy(enviandoResena = false) }
-                        _uiEvent.send(
+                        _uiEvent.tryEmit(
                             MenuUiEvent.ShowSnackbar("Ya has comentado en este restaurante")
                         )
                     }
                 }
                 .onFailure { exception ->
                     updateSuccess { copy(enviandoResena = false) }
-                    _uiEvent.send(
+                    _uiEvent.tryEmit(
                         MenuUiEvent.ShowSnackbar(
                             exception.message ?: "Error al comprobar el usuario"
                         )
@@ -175,13 +188,18 @@ class MenuViewModel(
                     }
                 }
                 .onFailure { exception ->
-                    _uiEvent.send(
+                    _uiEvent.tryEmit(
                         MenuUiEvent.ShowSnackbar(
                             exception.message ?: "Error al actualizar el promedio"
                         )
                     )
                 }
         }
+    }
+
+    fun abrirMenuConProducto(producto: DTOProducto) {
+        productoASeleccionar = producto
+        _uiEvent.tryEmit(MenuUiEvent.NavigateToMenu(producto.idRestaurante?.toLong() ?: 0L))
     }
 }
 
@@ -248,4 +266,6 @@ sealed class MenuUiState {
 
 sealed interface MenuUiEvent {
     data class ShowSnackbar(val message: String) : MenuUiEvent
+    data class NavigateToMenu(val restauranteId: Long) : MenuUiEvent
+    data class AbrirModalProducto(val producto: DTOProducto) : MenuUiEvent
 }

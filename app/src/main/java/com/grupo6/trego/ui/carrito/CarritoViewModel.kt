@@ -10,12 +10,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.grupo6.trego.data.model.DTOCarrito
 import com.grupo6.trego.data.model.DTODireccion
-import com.grupo6.trego.data.model.DTOIngrediente
 import com.grupo6.trego.data.model.DTOPreferenciaMP
+import com.grupo6.trego.data.model.DTOProducto
 import com.grupo6.trego.data.model.DTOProductoPedido
-import com.grupo6.trego.data.model.DTOProductoSimplificado
 import com.grupo6.trego.data.model.DTORestaurante
-import com.grupo6.trego.data.notificaciones.PushNotificationManager
 import com.grupo6.trego.data.repository.PedidoRepository
 import com.grupo6.trego.data.repository.UsuarioRepository
 import kotlinx.coroutines.channels.Channel
@@ -24,7 +22,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import org.koin.java.KoinJavaComponent.inject
 
 sealed class CarritoUiState {
     object Cargando : CarritoUiState()               // nueva
@@ -98,6 +95,7 @@ class CarritoViewModel(
             repository.obtenerCarrito()
                 .onSuccess { carrito ->
                     carritoActual = carrito
+                    Log.e("Carrito", carrito?.productos.toString())
                     _items.clear()
                     if (carrito != null) {
                         _items.addAll(carrito.productos ?: emptyList())
@@ -123,17 +121,22 @@ class CarritoViewModel(
                 _direccionesState.value = DireccionesState.Cargadas(direcciones)
             } else {
                 val error = result.exceptionOrNull()
-                _direccionesState.value = DireccionesState.Error(error?.message ?: "Error desconocido")
+                _direccionesState.value =
+                    DireccionesState.Error(error?.message ?: "Error desconocido")
             }
         }
     }
 
     // Confirma los datos que se ingresaron en el modal de detalle donde se ingresa la cantidad, observaciones etc..
     fun confirmarModal(item: DTOProductoPedido) {
+Log.e("Carrito", item.ingredientesAQuitar.toString())
         viewModelScope.launch {
             uiState = CarritoUiState.Cargando
             // ¿El producto ya existe en el carrito?
-            val existe = _items.any { it.producto?.idProducto == item.producto?.idProducto }
+            val existe = _items.any {
+                it.producto?.idProducto == item.producto?.idProducto &&
+                        it.ingredientesAQuitar == item.ingredientesAQuitar
+            }
 
             if (existe) {
                 // EDITAR → modificar, no agregar
@@ -179,13 +182,14 @@ class CarritoViewModel(
             return
         }
         viewModelScope.launch {
-            val precioUnitario: Float = (item.producto?.precio) ?: 0f
+            val precioUnitario: Float =
+                (item.producto?.calcularPrecioConDescuento()?.toFloat()) ?: 0f
             val nuevoSubtotal = precioUnitario * nuevaCantidad
             // Para modificar, enviamos idProducto en la raíz
             val request = DTOProductoPedido(
                 producto = item.producto,
                 cantidad = nuevaCantidad,
-                ingredientes = item.ingredientes,
+                ingredientesAQuitar = item.ingredientesAQuitar,
                 subtotal = nuevoSubtotal,
                 observaciones = item.observaciones,
                 cantidadDisponible = item.cantidadDisponible
@@ -199,6 +203,7 @@ class CarritoViewModel(
                             _items.indexOfFirst { it.producto?.idProducto == lineaActualizada.producto?.idProducto }
                         if (index >= 0) {
                             _items[index] = lineaActualizada
+                            actualizarTotal()
                         } else {
                             // si no estaba, simplemente recargamos todo
                             cargarCarrito()
@@ -220,7 +225,7 @@ class CarritoViewModel(
             val request = DTOProductoPedido(
                 producto = item.producto,
                 cantidad = item.cantidad ?: 1,
-                ingredientes = item.ingredientes,
+                ingredientesAQuitar = item.ingredientesAQuitar,
                 subtotal = item.subtotal,
                 observaciones = item.observaciones,
                 cantidadDisponible = item.cantidadDisponible
@@ -258,18 +263,18 @@ class CarritoViewModel(
 
     // ─── MODAL ───
     fun abrirModalNuevoProducto(
-        productoSimplificado: DTOProductoSimplificado,
+        producto: DTOProducto,
         restaurante: DTORestaurante
     ) {
         esEdicion = false
         nombreRestaurante = restaurante.nombre.toString()
         productoEnModal = DTOProductoPedido(
-            producto = productoSimplificado,
+            producto = producto,
             cantidad = 1,
             observaciones = null,
-            ingredientes = emptyList(),  // o null según tu modelo
-            cantidadDisponible = 1,// aca debe de ir la cantidad disponible
-            subtotal = productoSimplificado.precio as Float?
+            ingredientesAQuitar = emptyList(),
+            cantidadDisponible = producto.cantidadDisponible ?: 0,
+            subtotal = producto.calcularPrecioConDescuento().toFloat()
         )
         showModal = true
     }
@@ -289,6 +294,7 @@ class CarritoViewModel(
     fun seleccionarDireccion(direccion: DTODireccion) {
         direccionSeleccionada = direccion
     }
+
     fun reiniciar() {
         _items.clear()
         direccionSeleccionada = null
@@ -303,6 +309,10 @@ class CarritoViewModel(
         } else {
             CarritoUiState.Cargado(_items.toList())
         }
+    }
+
+    private fun actualizarTotal() {
+        total = _items.sumOf { (it.subtotal ?: 0f).toDouble() }
     }
 
     fun confirmarPedido() {

@@ -14,3 +14,12 @@ val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)
 val ContainerButon = Color(0xFFEEF0F3)
 val Pink40 = Color(0xFF7D5260)
+val ComboGreen = Color(0xFF1BAF6E)
+val ComboGreenLight = Color(0xFFE6F5EE)
+val ComboGreenDark = Color(0xFF0A7A47)
+
+val OrangePillBg = Color(0xFFFEF0EA)
+val OrangePillText = Color(0xFFC4400E)
+
+val OrangePlaceholder = Color(0xFFFFF0E8)
+val GreenPlaceholder = Color(0xFFE8F8F1)

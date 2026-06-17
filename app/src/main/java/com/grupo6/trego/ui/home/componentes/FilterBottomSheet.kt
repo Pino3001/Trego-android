@@ -1,4 +1,4 @@
-package com.grupo6.trego.ui.restaurantes.componentes
+package com.grupo6.trego.ui.home.componentes
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -8,7 +8,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import com.grupo6.trego.data.model.EnumCategoriaRestaurante
-import com.grupo6.trego.ui.restaurantes.FilterState
+import com.grupo6.trego.ui.home.restaurantes.FilterState
 import com.grupo6.trego.ui.theme.TregoOrange
 
 @OptIn(ExperimentalMaterial3Api::class)

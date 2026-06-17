@@ -1,4 +1,4 @@
-package com.grupo6.trego.ui.restaurantes
+package com.grupo6.trego.ui.home.restaurantes
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -12,7 +12,6 @@ import com.grupo6.trego.data.model.DTODireccion
 import com.grupo6.trego.data.model.DTORestaurante
 import com.grupo6.trego.data.model.EnumCategoriaRestaurante
 import com.grupo6.trego.data.repository.RestauranteRepository
-import com.grupo6.trego.data.utilities.LocationState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,11 +56,6 @@ sealed class AddressSearchUiState {
 class RestauranteViewModel(
     private val repository: RestauranteRepository
 ) : ViewModel() {
-
-    // --- Estado de ubicación (expuesto para que la Screen decida qué mostrar) ---
-
-    private val _locationState = MutableStateFlow<LocationState>(LocationState.Idle)
-    val locationState: StateFlow<LocationState> = _locationState.asStateFlow()
 
     // --- Estado de búsqueda por nombre ---
 
@@ -152,34 +146,10 @@ class RestauranteViewModel(
 
 
     /**
-     * Llamar cuando se obtienen coordenadas válidas desde [RequestLocation].
+     * Llamar para actualizar la ubicación interna y disparar la paginación.
      */
-    fun onLocationAvailable(lat: Double, lon: Double) {
-        _locationState.value = LocationState.Available(lat, lon)
+    fun updateLocation(lat: Double, lon: Double) {
         _currentLocation.value = Pair(lat, lon)
-    }
-
-    /**
-     * Llamar cuando el GPS está activo pero no devolvió coordenadas (fix pendiente).
-     */
-    fun onLocationUnavailable() {
-        _locationState.value = LocationState.LocationUnavailable
-        _currentLocation.value = null
-    }
-
-    /**
-     * Llamar cuando el usuario denegó el permiso de ubicación.
-     */
-    fun onPermissionDenied() {
-        _locationState.value = LocationState.PermissionDenied
-        _currentLocation.value = null
-    }
-
-    /**
-     * Llamar mientras el diálogo de permiso está abierto.
-     */
-    fun onRequestingPermission() {
-        _locationState.value = LocationState.RequestingPermission
     }
 
 // --- Búsqueda por nombre ---

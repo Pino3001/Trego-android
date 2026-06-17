@@ -1,15 +1,21 @@
 package com.grupo6.trego.ui.carrito.componentes
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -35,6 +41,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -44,6 +52,11 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.grupo6.trego.data.model.DTOIngrediente
 import com.grupo6.trego.data.model.DTOProductoPedido
+import com.grupo6.trego.ui.theme.BlancoCard
+import com.grupo6.trego.ui.theme.ComboGreen
+import com.grupo6.trego.ui.theme.ComboGreenDark
+import com.grupo6.trego.ui.theme.GreenPlaceholder
+import com.grupo6.trego.ui.theme.OrangePlaceholder
 import com.grupo6.trego.ui.theme.TregoOrange
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,12 +70,16 @@ fun ProductoDetalleModal(
     var cantidad by remember { mutableStateOf(item.cantidad ?: 1) }
     var comentario by remember { mutableStateOf(item.observaciones ?: "") }
     var ingredientesQuitados by remember {
-        mutableStateOf<Set<DTOIngrediente>>(item.ingredientes?.toSet() ?: emptySet())
+        mutableStateOf<Set<DTOIngrediente>>(item.ingredientesAQuitar?.toSet() ?: emptySet())
+    }
+    val mapProductosCombo = remember(item.producto?.combo) {
+        item.producto?.combo?.obtenerConteoPorNombre() ?: emptyMap()
     }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        containerColor = BlancoCard
     ) {
         Column(
             modifier = Modifier
@@ -181,7 +198,7 @@ fun ProductoDetalleModal(
                     Text("Precio unidad", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        "${(item.producto?.precio)?.toInt()}$",
+                        "${(item.producto?.calcularPrecioConDescuento())}$",
                         color = TregoOrange,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
@@ -192,7 +209,7 @@ fun ProductoDetalleModal(
 
             Spacer(Modifier.height(8.dp))
 
-            if (item.producto?.ingredientes?.isEmpty() == true) {
+            if (!item.producto?.ingredientes.isNullOrEmpty()) {
                 Text("Ingredientes opcionales", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                 Spacer(Modifier.height(4.dp))
 
@@ -225,6 +242,74 @@ fun ProductoDetalleModal(
                 }
             }
 
+            if (!item.producto?.combo?.productosIncluidos.isNullOrEmpty()) {
+                Text("Incluye en el combo", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Productos que forman parte de este combo",
+                    fontSize = 13.sp,
+                    color = Color.Gray
+                )
+                Spacer(Modifier.height(8.dp))
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    mapProductosCombo.entries.forEach { (nombre, cantidad) ->
+                        Row(
+                            modifier = Modifier
+                                .border(1.dp, ComboGreen, RoundedCornerShape(99.dp))
+                                .clip(RoundedCornerShape(99.dp))
+                                .background(GreenPlaceholder)
+                                .padding(
+                                    start  = if (cantidad > 1) 3.dp else 12.dp,
+                                    end    = 12.dp,
+                                    top    = 5.dp,
+                                    bottom = 5.dp
+                                ),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            // Badge de cantidad — solo cuando hay más de uno
+                            if (cantidad > 1) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .clip(CircleShape)
+                                        .background(ComboGreen),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = "$cantidad",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1,
+                                        style = TextStyle(
+                                            lineHeight = 11.sp,
+                                            platformStyle = PlatformTextStyle(
+                                                includeFontPadding = false
+                                            )
+                                        ),
+                                        modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.Center)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = nombre,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = ComboGreenDark
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+            }
 
             Spacer(Modifier.height(8.dp))
 
@@ -248,7 +333,7 @@ fun ProductoDetalleModal(
 
             // Subtotal
             val precioUnitario =
-                (item.producto?.precio?.toInt() ?: 0)
+                (item.producto?.calcularPrecioConDescuento() ?: 0)
             val subtotal = precioUnitario * cantidad
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -271,7 +356,7 @@ fun ProductoDetalleModal(
                         item.copy(
                             cantidad = cantidad,
                             observaciones = comentario.ifBlank { null },
-                            ingredientes = ingredientesQuitados.toList(),
+                            ingredientesAQuitar = ingredientesQuitados.toList(),
                             subtotal = subtotal.toFloat()
                         )
                     )

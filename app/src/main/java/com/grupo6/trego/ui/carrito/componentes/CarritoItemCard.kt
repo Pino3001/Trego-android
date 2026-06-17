@@ -103,7 +103,7 @@ fun CarritoItemCard(
                 }
 
                 // Ingredientes quitados
-                if (item.ingredientes?.isNotEmpty() == true) {
+                if (item.ingredientesAQuitar?.isNotEmpty() == true) {
                     Spacer(Modifier.height(4.dp))
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -115,7 +115,7 @@ fun CarritoItemCard(
                             color = Color.Gray,
                             modifier = Modifier.align(Alignment.CenterVertically)
                         )
-                        item.ingredientes.forEach { ing ->
+                        item.ingredientesAQuitar.forEach { ing ->
                             Surface(
                                 shape = RoundedCornerShape(50),
                                 color = TregoOrange.copy(alpha = 0.15f)

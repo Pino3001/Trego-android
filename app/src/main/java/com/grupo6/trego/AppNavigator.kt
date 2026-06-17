@@ -33,7 +33,7 @@ import com.grupo6.trego.ui.pedidos.HistorialScreen
 import com.grupo6.trego.ui.pedidos.PedidoScreen
 import com.grupo6.trego.ui.pedidos.PedidoUiState
 import com.grupo6.trego.ui.pedidos.PedidoViewModel
-import com.grupo6.trego.ui.restaurantes.RestaurantListScreen
+import com.grupo6.trego.ui.home.HomePage
 import com.grupo6.trego.ui.tabs.NavigationTabs
 import com.grupo6.trego.ui.usuario.PerfilScreen
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -118,8 +118,8 @@ fun AppNavigation(pendingPaymentStatus: MutableStateFlow<String?> = MutableState
                 if (user == null) {
                     LaunchedEffect(Unit) { navController.navigate("login") { popUpTo(0) } }
                 } else {
-                    RestaurantListScreen(
-                        onRestaurantClick = { id -> navController.navigate("menu/$id") }
+                    HomePage(
+                        navController = navController
                     )
                 }
             }
