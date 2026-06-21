@@ -8,12 +8,14 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Query
 
 interface PedidoApiService {
 
     @POST("pedido/confirmar")
     suspend fun confirmarPedido(
-        @Body request: DTODireccion
+        @Body request: DTODireccion,
+        @Query("canal") canal: String = "MOBILE"
     ): Response<DTOPreferenciaMP>
 
     @GET("pedido/misPedidosActuales")

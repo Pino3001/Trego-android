@@ -55,6 +55,7 @@ dependencies {
     // --- CORRUTINAS (INDISPENSABLE para usar .await() en Firebase y Google) ---
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.core.splashscreen)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

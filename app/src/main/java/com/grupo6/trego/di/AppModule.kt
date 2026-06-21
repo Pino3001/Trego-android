@@ -11,6 +11,7 @@ import com.grupo6.trego.data.remote.RestaurantApiService
 import com.grupo6.trego.data.remote.SubCategoriaApiService
 import com.grupo6.trego.data.remote.UsuarioApiService
 import com.grupo6.trego.data.repository.CloudinaryRepository
+import com.grupo6.trego.data.repository.LocationRepository
 import com.grupo6.trego.data.repository.PedidoRepository
 import com.grupo6.trego.data.repository.ProductoRepository
 import com.grupo6.trego.data.repository.RestauranteRepository
@@ -94,18 +95,19 @@ val appModule = module {
     single { PushNotificationManager() }
     single { SubcategoriaRepository(get()) }
     single { ProductoRepository(get()) }
+    single { LocationRepository() }
 
 
     // ViewModels
     viewModel { RestauranteViewModel(get()) }
     viewModel { MenuViewModel(get()) }
-    viewModel { CarritoViewModel(get(), get(), get()) }
+    viewModel { CarritoViewModel(get(), get(), get(), get()) }
     viewModel { AuthViewModel(get(), get(), get()) }
     viewModel { PedidoViewModel(get(), get(), get()) }
     viewModel { PerfilViewModel(get(), get()) }
     viewModel { SubCategoriaViewModel(get()) }
     viewModel { PlatoViewModel(get()) }
     viewModel { OfertaViewModel(get()) }
-    viewModel { HomeViewModel() }
+    viewModel { HomeViewModel(get(), get()) }
 
 }

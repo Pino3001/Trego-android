@@ -1,5 +1,6 @@
 package com.grupo6.trego.ui.carrito.componentes
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.grupo6.trego.data.model.DTOProductoPedido
+import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 
 @Composable
@@ -35,8 +37,9 @@ fun CarritoItemCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
-        elevation = CardDefaults.cardElevation(2.dp)
+        colors = CardDefaults.cardColors(containerColor = BlancoCard),
+        elevation = CardDefaults.cardElevation(2.dp),
+        border = BorderStroke(width = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(
             modifier = Modifier

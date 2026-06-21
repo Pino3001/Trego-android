@@ -28,7 +28,7 @@ interface RestaurantApiService {
     ): Response<PageResponse<DTORestaurante>>
 
     // ── Buscar restaurantes por nombre ──
-    @GET("restaurantes/buscar")
+    @GET("restaurantes/listar")
     suspend fun buscarRestaurantesPorNombre(
         @Query("nombre") nombre: String
     ): Response<List<DTORestaurante>>

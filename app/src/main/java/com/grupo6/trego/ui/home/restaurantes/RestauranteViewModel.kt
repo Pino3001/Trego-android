@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
+import java.time.LocalTime
 
 // ---------------------------------------------------------------------------
 // Modelos de estado
@@ -28,7 +29,8 @@ import kotlinx.coroutines.launch
 data class FilterState(
     val categoria: EnumCategoriaRestaurante? = EnumCategoriaRestaurante.SinCategoria,
     val calificacionMinima: Double? = null,
-    val soloAbiertos: Boolean = false
+    val horaDesde: LocalTime? = null,
+    val horaHasta: LocalTime? = null
 )
 
 /**
@@ -58,6 +60,7 @@ class RestauranteViewModel(
 ) : ViewModel() {
 
     // --- Estado de búsqueda por nombre ---
+    private var rawSearchResults = listOf<DTORestaurante>()
 
     var searchUiState by mutableStateOf<SearchUiState>(SearchUiState.Idle)
         private set
@@ -72,6 +75,8 @@ class RestauranteViewModel(
 
     var filterState by mutableStateOf(FilterState())
         private set
+
+    private var rawAddressResults = listOf<DTORestaurante>()
 
     var addressSearchUiState by mutableStateOf<AddressSearchUiState>(AddressSearchUiState.Idle)
         private set
@@ -123,8 +128,8 @@ class RestauranteViewModel(
             try {
                 repository.getRestaurantsByAddress(direccion)
                     .onSuccess { list ->
-                        addressSearchUiState = if (list.isEmpty()) AddressSearchUiState.Empty
-                        else AddressSearchUiState.Success(list)
+                        rawAddressResults = list
+                        applyFiltersToStates()
                     }
                     .onFailure { e ->
                         addressSearchUiState =
@@ -142,6 +147,7 @@ class RestauranteViewModel(
     fun clearAddressSearch() {
         isAddressSearchMode = false
         addressSearchUiState = AddressSearchUiState.Idle
+        rawAddressResults = emptyList()
     }
 
 
@@ -167,8 +173,8 @@ class RestauranteViewModel(
             try {
                 repository.searchRestaurantsByName(searchQuery)
                     .onSuccess { list ->
-                        searchUiState = if (list.isEmpty()) SearchUiState.Empty
-                        else SearchUiState.Success(list)
+                        rawSearchResults = list
+                        applyFiltersToStates()
                     }
                     .onFailure { e ->
                         searchUiState = SearchUiState.Error(e.message ?: "Error desconocido")
@@ -183,15 +189,106 @@ class RestauranteViewModel(
         searchQuery = ""
         isSearchMode = false
         searchUiState = SearchUiState.Idle
+        rawSearchResults = emptyList()
     }
 
 // --- Filtros ---
 
     fun onApplyFilter(newFilter: FilterState) {
         filterState = newFilter
+        applyFiltersToStates()
     }
 
     fun onClearFilters() {
         filterState = FilterState()
+        applyFiltersToStates()
+    }
+
+    private fun applyFiltersToStates() {
+        if (isSearchMode) {
+            val filtered = filterRestaurants(rawSearchResults)
+            searchUiState =
+                if (filtered.isEmpty()) SearchUiState.Empty else SearchUiState.Success(filtered)
+        }
+        if (isAddressSearchMode) {
+            val filtered = filterRestaurants(rawAddressResults)
+            addressSearchUiState =
+                if (filtered.isEmpty()) AddressSearchUiState.Empty else AddressSearchUiState.Success(
+                    filtered
+                )
+        }
+    }
+
+    private fun filterRestaurants(list: List<DTORestaurante>): List<DTORestaurante> {
+        return list.filter { res ->
+            val matchCategoria = filterState.categoria == null ||
+                    filterState.categoria == EnumCategoriaRestaurante.SinCategoria ||
+                    res.categoria == filterState.categoria
+
+            val matchRating = filterState.calificacionMinima == null ||
+                    (res.calificacionProm ?: 0f) >= filterState.calificacionMinima!!.toFloat()
+
+            val matchHorario = matchesHorario(res, filterState.horaDesde, filterState.horaHasta)
+
+            matchCategoria && matchRating && matchHorario
+        }
+    }
+}
+
+/**
+ * Verifica si el restaurante atiende durante el rango pedido.
+ * Si el restaurante no tiene horario cargado, pasa el filtro siempre.
+ * Si solo se definió un extremo del rango, el otro se completa al límite del día.
+ */
+private fun matchesHorario(
+    restaurante: DTORestaurante,
+    horaDesde: LocalTime?,
+    horaHasta: LocalTime?
+): Boolean {
+    if (horaDesde == null && horaHasta == null) return true
+
+    val apertura = restaurante.horaApertura ?: return true
+    val cierre   = restaurante.horaCierre   ?: return true
+
+    val desdeMin = horaDesde?.let { timeToMinutes(it) } ?: 0
+    val hastaMin = horaHasta?.let { timeToMinutes(it) } ?: 1439   // 23:59
+
+    return rangesOverlap(
+        start1 = timeToMinutes(apertura),
+        end1   = timeToMinutes(cierre),
+        start2 = desdeMin,
+        end2   = hastaMin
+    )
+}
+
+private fun timeToMinutes(time: LocalTime): Int = time.hour * 60 + time.minute
+
+/**
+ * Detecta solapamiento entre dos rangos horarios contemplando cruces de medianoche.
+ * Un rango cruza medianoche cuando end < start (ej: apertura 22:00, cierre 04:00).
+ *
+ * Casos:
+ *  Ninguno cruza → overlap clásico
+ *  Solo restaurante cruza → está abierto [start1..23:59] ∪ [00:00..end1]
+ *  Solo filtro cruza     → el usuario busca [start2..23:59] ∪ [00:00..end2]
+ *  Ambos cruzan          → siempre solapan (ambos cubren la madrugada)
+ */
+private fun rangesOverlap(start1: Int, end1: Int, start2: Int, end2: Int): Boolean {
+    val restauranteCruzaMedianoche = end1 < start1
+    val filtroCruzaMedianoche      = end2 < start2
+
+    return when {
+        !restauranteCruzaMedianoche && !filtroCruzaMedianoche ->
+            start1 <= end2 && start2 <= end1
+
+        restauranteCruzaMedianoche && !filtroCruzaMedianoche ->
+            // Restaurante cubre [start1..1439] ∪ [0..end1]
+            start2 <= end1 || end2 >= start1
+
+        !restauranteCruzaMedianoche && filtroCruzaMedianoche ->
+            // Filtro busca [start2..1439] ∪ [0..end2]
+            start1 <= end2 || end1 >= start2
+
+        else -> true // ambos cruzan medianoche → siempre hay solapamiento
     }
 }

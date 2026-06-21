@@ -4,12 +4,9 @@ import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -26,24 +23,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -63,9 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -77,7 +68,6 @@ import com.grupo6.trego.R
 import com.grupo6.trego.ui.carrito.componentes.CarritoItemCard
 import com.grupo6.trego.ui.carrito.componentes.DireccionSelectorModal
 import com.grupo6.trego.ui.carrito.componentes.ProductoDetalleModal
-import com.grupo6.trego.ui.componentes.DialogComponent
 import com.grupo6.trego.ui.componentes.TregoHeader
 import com.grupo6.trego.ui.componentes.VistaEstado
 import com.grupo6.trego.ui.pedidos.PedidoViewModel
@@ -106,7 +96,7 @@ fun CarritoScreen(
     LaunchedEffect(statusDePago) {
         Log.d("DeepLink", "Status recibido: $statusDePago")
         when (statusDePago) {
-            "exito" -> {
+            "success" -> {
                 viewModel.marcarPagoExitoso()
                 procesandoPago = true
 
@@ -128,12 +118,12 @@ fun CarritoScreen(
                 }
             }
 
-            "rechazado" -> {
+            "failure" -> {
                 viewModel.marcarPagoRechazado()
                 snackbarHostState.showSnackbar("El pago fue rechazado. Revisa tus datos.")
             }
 
-            "pendiente" -> {
+            "pending" -> {
                 viewModel.marcarPagoPendiente()
                 pedidoViewModel.cargarPedidos()
                 navController.navigate("pedido") {
@@ -170,31 +160,16 @@ fun CarritoScreen(
         )
     }
 
+
     // ─── ALERTAS ────────────────────────────────────────────────────────
-    var errorDialogMessage by remember { mutableStateOf<String?>(null) }
-
-    if (errorDialogMessage != null) {
-        DialogComponent(message = errorDialogMessage!!, onDismiss = { errorDialogMessage = null })
-    }
-
     LaunchedEffect(Unit) {
         viewModel.recargarCarrito()
     }
 
     LaunchedEffect(Unit) {
         viewModel.errorEvent.collect { mensaje ->
-            errorDialogMessage = mensaje
+            snackbarHostState.showSnackbar(mensaje)
         }
-    }
-
-    if (viewModel.uiState == CarritoUiState.RestauranteCerrado) {
-        DialogComponent(
-            message = "El restaurante ya no acepta pedidos por hoy. ¡Te esperamos mañana!",
-            onDismiss = {
-                viewModel.reiniciar()
-                navController.popBackStack()
-            }
-        )
     }
 
     Scaffold(
@@ -232,6 +207,7 @@ fun CarritoScreen(
                         }
                     }
                 },
+                bottomPadding = 4.dp,
                 bottomContent = {
                     Text(
                         text = viewModel.nombreRestaurante.ifBlank { "Tu Pedido" },
@@ -267,7 +243,6 @@ fun CarritoScreen(
                     Column(modifier = Modifier.fillMaxSize()) {
                         LazyColumn(
                             modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(vertical = 8.dp)
                         ) {
                             item {
                                 SelectorDireccionItem(
@@ -275,11 +250,7 @@ fun CarritoScreen(
                                     onAbrirSelector = { mostrarSelectorDireccion = true })
                             }
                             item {
-                                Text(
-                                    "Lista de Pedidos:",
-                                    modifier = Modifier.padding(16.dp),
-                                    color = Color.Gray
-                                )
+                                Spacer(Modifier.height(15.dp))
                             }
                             items(state.items) { item ->
                                 CarritoItemCard(
@@ -402,7 +373,7 @@ fun CarritoScreen(
                     VistaEstado(
                         titulo = "Restaurante Cerrado",
                         mensaje = "El restaurante ya no acepta pedidos por hoy. ¡Te esperamos mañana!",
-                        iconoResId = R.drawable.tregologo,
+                        iconoResId = R.drawable.bolsa,
                         botonTexto = "Volver al inicio",
                         onAccion = {
                             viewModel.reiniciar()
@@ -432,16 +403,10 @@ fun CarritoScreen(
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                // Bloqueamos el botón "Atrás" físico/gestual del teléfono
-                BackHandler(enabled = true) {
-                    // No hacemos nada, obligamos al usuario a esperar
-                }
-
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(Color.Black.copy(alpha = 0.7f))
-                        // 🌟 CLAVE: Consumimos los toques para que no traspasen a los botones de abajo
                         .pointerInput(Unit) { detectTapGestures { } },
                     contentAlignment = Alignment.Center
                 ) {
@@ -482,68 +447,63 @@ fun CarritoScreen(
     }
 }
 
-// ─── COMPOSABLES DE APOYO ───
-
 @Composable
 private fun SelectorDireccionItem(
     viewModel: CarritoViewModel,
     onAbrirSelector: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-    ) {
-        Text(
-            "Entregar en:",
-            style = MaterialTheme.typography.labelLarge,
-            fontSize = 14.sp,
-            color = Color.Gray
-        )
-        Button(
-            onClick = onAbrirSelector,
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White,
-                contentColor = if (viewModel.direccionSeleccionada != null) Color.Black else TregoOrange
-            ),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(
-                width = 1.dp,
-                color = if (viewModel.direccionSeleccionada != null) Color.LightGray else TregoOrange.copy(
-                    alpha = 0.5f
+                .background(
+                    color = TregoOrange,
+                    shape = RoundedCornerShape(
+                        topStart = 0.dp,
+                        bottomStart = 12.dp,
+                        topEnd = 0.dp,
+                        bottomEnd = 50.dp
+                    )
                 )
-            ),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Button(
+                onClick = onAbrirSelector,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = null,
-                    tint = TregoOrange
-                )
-                Text(
-                    text = viewModel.direccionSeleccionada?.calle ?: "Seleccionar dirección",
-                    fontWeight = if (viewModel.direccionSeleccionada != null) FontWeight.SemiBold else FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "Cambiar",
-                    tint = Color.Gray
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.LocationOn,
+                        tint = Color.White,
+                        contentDescription = "ubicacion",
+                        modifier = Modifier.size(16.dp)
+                    )
+
+                    Spacer(Modifier.width(8.dp))
+
+                    Text(
+                        color = Color.White,
+                        text = "${viewModel.direccionSeleccionada?.calle ?: "Seleccionar dirección"} ${viewModel.direccionSeleccionada?.numero}",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+
+                    Spacer(Modifier.width(8.dp))
+
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowDown,
+                        tint = Color.White,
+                        contentDescription = "modal",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
-        HorizontalDivider(modifier = Modifier.padding(top = 10.dp))
     }
 }
 
@@ -556,7 +516,7 @@ private fun TotalYBoton(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Row(
@@ -573,13 +533,12 @@ private fun TotalYBoton(
                 color = TregoOrange
             )
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
         Button(
             onClick = { viewModel.confirmarPedido() },
             enabled = enabled,
             modifier = Modifier
-                .fillMaxWidth()
-                .height(35.dp),
+                .fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = TregoOrange),
             shape = RoundedCornerShape(50)
         ) {

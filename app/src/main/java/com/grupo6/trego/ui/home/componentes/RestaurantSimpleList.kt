@@ -19,11 +19,13 @@ fun RestaurantSimpleList(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
-        items(restaurants) { restaurant ->
-            RestaurantItem(
-                restaurant = restaurant,
-                onClick = { onRestaurantClick(restaurant.idRestaurante?.toLong() ?: 0L) }
-            )
+        repeat(20) { // Cambia el 5 por la cantidad de veces que quieras repetir la lista completa
+            items(restaurants) { restaurant ->
+                RestaurantItem(
+                    restaurant = restaurant,
+                    onClick = { onRestaurantClick(restaurant.idRestaurante?.toLong() ?: 0L) }
+                )
+            }
         }
     }
 }

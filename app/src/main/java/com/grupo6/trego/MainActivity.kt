@@ -9,8 +9,11 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import com.google.firebase.auth.FirebaseAuth
+import com.grupo6.trego.data.utilities.AppReadyState
 import com.grupo6.trego.ui.theme.TregoTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -20,6 +23,21 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
+        val startTime = System.currentTimeMillis()
+
+        splashScreen.setKeepOnScreenCondition {
+            val user = FirebaseAuth.getInstance().currentUser
+            val elapsed = System.currentTimeMillis() - startTime
+            
+            if (user == null || elapsed > 5000) {
+                // Si no hay sesión o pasaron 5 segundos (timeout), soltamos el splash
+                false
+            } else {
+                // Si hay sesión, esperamos a que el backend de restaurantes responda
+                !AppReadyState.isDataReady.value
+            }
+        }
 
         super.onCreate(savedInstanceState)
 
@@ -35,7 +53,6 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             TregoTheme {
-                // Quitamos el Scaffold de aquí para que lo maneje AppNavigation internamente
                 AppNavigation(pendingPaymentStatus)
             }
         }

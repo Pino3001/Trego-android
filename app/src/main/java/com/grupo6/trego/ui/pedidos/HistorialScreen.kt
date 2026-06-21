@@ -11,6 +11,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
@@ -37,12 +39,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.grupo6.trego.ui.componentes.TregoHeader
 import com.grupo6.trego.ui.componentes.VistaError
+import com.grupo6.trego.ui.componentes.VistaEstado
 import com.grupo6.trego.ui.pedidos.componentes.FiltrosHistorial
 import com.grupo6.trego.ui.pedidos.componentes.HistorialCard
 import com.grupo6.trego.ui.theme.BlancoCard
@@ -172,15 +173,15 @@ fun HistorialScreen(
                     is PedidoUiState.Historial -> {
                         val pedidos = state.historial
                         if (pedidos.isEmpty()) {
-                            Text(
-                                text = if (searchQuery.isNotEmpty() || selectedEstado != null || selectedDate != null)
-                                    "Sin resultados para los filtros aplicados"
-                                else
-                                    "No hay pedidos anteriores",
-                                modifier = Modifier.align(Alignment.Center),
-                                color = Color.Gray,
-                                textAlign = TextAlign.Center,
-                                fontSize = 14.sp
+                            val esBusqueda = searchQuery.isNotEmpty() || selectedEstado != null || selectedDate != null
+                            VistaEstado(
+                                titulo = if (esBusqueda) "Sin resultados" else "Historial vacío",
+                                mensaje = if (esBusqueda) "No encontramos pedidos que coincidan con tus filtros." 
+                                          else "Aún no tienes pedidos finalizados en tu historial.",
+                                icono = if (esBusqueda) Icons.Default.SearchOff else Icons.Default.History,
+                                colorIcono = Color.Gray,
+                                onAccion = if (esBusqueda) { { viewModel.clearFiltros() } } else null,
+                                botonTexto = "Limpiar filtros"
                             )
                         } else {
                             LazyColumn(

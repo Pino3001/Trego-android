@@ -1,6 +1,5 @@
 package com.grupo6.trego.ui.pedidos
 
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -16,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.NotificationsNone
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -28,7 +26,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,11 +41,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.grupo6.trego.data.model.PedidoUiModel
+import com.grupo6.trego.ui.componentes.ConfirmDialogComponent
 import com.grupo6.trego.ui.componentes.TregoHeader
 import com.grupo6.trego.ui.componentes.VistaError
 import com.grupo6.trego.ui.componentes.VistaEstado
-import com.grupo6.trego.ui.componentes.ConfirmDialogComponent
-import com.grupo6.trego.data.model.PedidoUiModel
 import com.grupo6.trego.ui.pedidos.componentes.ActivePedidoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 import org.koin.androidx.compose.koinViewModel
@@ -212,16 +209,17 @@ fun PedidoScreen(navController: NavController) {
                     }
 
                     is PedidoUiState.Error -> {
-                        AlertDialog(
-                            onDismissRequest = { showHistoryModal = false },
-                            confirmButton = {
-                                TextButton(onClick = { showHistoryModal = false }) {
-                                    Text("Aceptar")
-                                }
-                            },
-                            title = { Text("Error") },
-                            text = { Text(hState.message) }
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.White),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            VistaError(
+                                mensaje = hState.message,
+                                onReintentar = { viewModel.cargarHistorial() }
+                            )
+                        }
                     }
 
                     else -> {}

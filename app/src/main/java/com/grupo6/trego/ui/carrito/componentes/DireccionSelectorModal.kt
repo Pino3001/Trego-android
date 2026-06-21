@@ -36,7 +36,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,8 +78,6 @@ fun DireccionSelectorModal(
     var esquinaInput by remember { mutableStateOf("") }
     var apartamentoInput by remember { mutableStateOf("") }
 
-    val coroutineScope = rememberCoroutineScope()
-
     // Cuando llega la ubicación, llamar a Geoapify
     LaunchedEffect(locationState) {
         if (locationState is LocationState.Available) {
@@ -92,7 +89,7 @@ fun DireccionSelectorModal(
                 calleInput = it.calle ?: ""
                 numeroInput = it.numero?.takeIf { it.isNotBlank() && it != "0" } ?: ""
                 esquinaInput = it.esquina ?: ""
-                apartamentoInput = if (it.apartamento != "") it.apartamento.toString() else ""
+                apartamentoInput = it.apartamento ?: ""
             }
             cargandoGeocode = false
         }

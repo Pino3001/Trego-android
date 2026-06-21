@@ -161,7 +161,7 @@ fun CalificacionModal(
 }
 
 @Composable
-fun StarRatingSelector(
+private fun StarRatingSelector(
     rating: Int,
     onRatingChange: (Int) -> Unit,
     modifier: Modifier = Modifier,

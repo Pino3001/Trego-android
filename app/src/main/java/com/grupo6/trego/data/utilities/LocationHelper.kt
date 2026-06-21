@@ -2,7 +2,8 @@ package com.grupo6.trego.data.utilities
 
 import android.Manifest
 import android.annotation.SuppressLint
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
@@ -86,7 +87,7 @@ fun RequestLocation(
 // Función de extensión para llamar a Geoapify
 suspend fun reverseGeocode(lat: Double, lon: Double): DTODireccion? {
     return try {
-        val apiKey = "d8f9a863d62a4f869bb5cac555b14ef3"
+        val apiKey = "d8f9a863d62a4f869bb5cac555b14ef3" // Ojo: en producción es mejor tener esto en un archivo de configuración/secrets
         val url = "https://api.geoapify.com/v1/geocode/reverse?lat=$lat&lon=$lon&apiKey=$apiKey"
         val response = withContext(Dispatchers.IO) {
             java.net.URL(url).readText()
@@ -97,10 +98,16 @@ suspend fun reverseGeocode(lat: Double, lon: Double): DTODireccion? {
             .getJSONObject(0)
             .getJSONObject("properties")
 
+        val rawHouseNumber = props.optString("housenumber", "")
+        val numeroLimpio = rawHouseNumber
+            .split(";", ",")
+            .firstOrNull()
+            ?.trim() ?: ""
+
         DTODireccion(
             calle = props.optString("street", null.toString()).takeIf { it != "null" },
-            numero = props.optString("housenumber", ""),
-            esquina = null, // Geoapify no devuelve esquina, se puede editar manualmente
+            numero = numeroLimpio, // Pasamos el número ya formateado
+            esquina = null,
             latitud = lat,
             longitud = lon
         )

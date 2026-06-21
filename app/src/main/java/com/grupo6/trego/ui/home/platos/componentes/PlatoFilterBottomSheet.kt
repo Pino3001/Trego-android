@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.grupo6.trego.data.model.SortOrder
+import com.grupo6.trego.ui.componentes.StarRatingSelector
 import com.grupo6.trego.ui.theme.TregoOrange
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -189,45 +189,5 @@ private fun SortOrderItem(
     }
 }
 
-/**
- * Selector de calificación mínima mediante estrellas tapeables.
- * Tocar la misma estrella ya seleccionada restablece el valor a 0 (sin mínimo).
- *
- * @param rating        Calificación actual (0-5 entero).
- * @param onRatingChange Callback con el nuevo valor entero seleccionado.
- */
-@Composable
-private fun StarRatingSelector(
-    rating: Int,
-    onRatingChange: (Int) -> Unit,
-) {
-    Column {
-        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            (1..5).forEach { star ->
-                IconButton(
-                    onClick = {
-                        // toca la misma estrella → resetea a 0
-                        onRatingChange(if (rating == star) 0 else star)
-                    },
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Star,
-                        contentDescription = "$star estrella${if (star != 1) "s" else ""}",
-                        tint = if (star <= rating) TregoOrange
-                        else MaterialTheme.colorScheme.outlineVariant,
-                        modifier = Modifier.size(38.dp),
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = if (rating == 0) "Sin calificación mínima"
-            else "$rating.0 ★ o más",
-            fontSize = 12.sp,
-            color = if (rating > 0) TregoOrange
-            else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
+
+

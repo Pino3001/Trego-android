@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.Map
@@ -20,7 +23,6 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,7 +43,8 @@ import com.grupo6.trego.ui.componentes.VistaError
 import com.grupo6.trego.ui.componentes.VistaEstado
 import com.grupo6.trego.ui.home.componentes.FilterBottomSheet
 import com.grupo6.trego.ui.home.componentes.LoadingPlaceholder
-import com.grupo6.trego.ui.home.componentes.RestaurantSimpleList
+import com.grupo6.trego.ui.home.restaurantes.componentes.RestaurantItem
+import com.grupo6.trego.ui.theme.TregoOrange
 import org.koin.androidx.compose.koinViewModel
 
 
@@ -86,145 +89,230 @@ fun RestaurantListScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.White)
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    SearchBar(
-                        query = viewModel.searchQuery,
-                        onQueryChange = viewModel::onSearchQueryChange,
-                        onClear = viewModel::onClearSearch,
-                        placeholderText = "Buscar Restaurante",
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    Spacer(Modifier.width(8.dp))
-
-                    IconButton(onClick = { showFilterSheet = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Tune,
-                            contentDescription = "Filtros",
-                            tint = Color.Black
-                        )
-                    }
-                }
-            }
-        }
-    ) { innerPadding ->
+    Box(modifier = Modifier.fillMaxSize()) {
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = { viewModel.refresh() },
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
+            modifier = Modifier.fillMaxSize()
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                when (locationState) {
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                // Buscador y Filtros
+                item {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    color = TregoOrange,
+                                    shape = RoundedCornerShape(
+                                        topStart = 0.dp,
+                                        bottomStart = 12.dp,
+                                        topEnd = 0.dp,
+                                        bottomEnd = 50.dp
+                                    )
+                                )
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            SearchBar(
+                                query = viewModel.searchQuery,
+                                onQueryChange = viewModel::onSearchQueryChange,
+                                onClear = viewModel::onClearSearch,
+                                onSearch = viewModel::onSearchSubmit,
+                                placeholderText = "Buscar Restaurante",
+                                modifier = Modifier.weight(1f),
+                                backgroundColor = Color.White,
+                                showBorder = false
+                            )
 
+                            Spacer(Modifier.width(8.dp))
+
+                            IconButton(onClick = { showFilterSheet = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.Tune,
+                                    contentDescription = "Filtros",
+                                    tint = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Contenido dinámico según el estado
+                when (locationState) {
                     LocationState.Idle,
                     LocationState.RequestingPermission -> {
-                        LoadingPlaceholder("Obteniendo tu ubicación...")
+                        item {
+                            Box(
+                                modifier = Modifier.fillParentMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                LoadingPlaceholder("Obteniendo tu ubicación...")
+                            }
+                        }
                     }
 
                     LocationState.PermissionDenied -> {
-                        VistaEstado(
-                            titulo = "Ubicación denegada",
-                            mensaje = "Permiso de ubicación denegado. Habilitalo desde la configuración para ver restaurantes cercanos.",
-                            icono = Icons.Default.LocationOff,
-                            colorIcono = Color.Gray,
-                            botonTexto = "Ir a Configuración",
-                            onAccion = {
-                                context.startActivity(
-                                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                        data = Uri.fromParts(
-                                            "package",
-                                            context.packageName,
-                                            null
+                        item {
+                            Box(
+                                modifier = Modifier.fillParentMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                VistaEstado(
+                                    titulo = "Ubicación denegada",
+                                    mensaje = "Permiso de ubicación denegado. Habilitalo desde la configuración para ver restaurantes cercanos.",
+                                    icono = Icons.Default.LocationOff,
+                                    colorIcono = Color.Gray,
+                                    botonTexto = "Ir a Configuración",
+                                    onAccion = {
+                                        context.startActivity(
+                                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                                data = Uri.fromParts(
+                                                    "package",
+                                                    context.packageName,
+                                                    null
+                                                )
+                                            }
                                         )
                                     }
                                 )
                             }
-                        )
+                        }
                     }
 
                     LocationState.LocationUnavailable -> {
-                        VistaEstado(
-                            titulo = "Ubicación no disponible",
-                            mensaje = "No pudimos obtener tu ubicación. Asegurate de tener el GPS activado.",
-                            icono = Icons.Default.LocationOff,
-                            colorIcono = Color.Gray,
-                            botonTexto = "Reintentar",
-                            onAccion = onRetryLocation
-                        )
+                        item {
+                            Box(
+                                modifier = Modifier.fillParentMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                VistaEstado(
+                                    titulo = "Ubicación no disponible",
+                                    mensaje = "No pudimos obtener tu ubicación. Asegurate de tener el GPS activado.",
+                                    icono = Icons.Default.LocationOff,
+                                    colorIcono = Color.Gray,
+                                    botonTexto = "Reintentar",
+                                    onAccion = onRetryLocation
+                                )
+                            }
+                        }
                     }
 
                     is LocationState.Available -> {
                         if (viewModel.isSearchMode) {
                             when (val searchState = viewModel.searchUiState) {
                                 SearchUiState.Loading -> {
-                                    LoadingPlaceholder("Buscando restaurantes...")
+                                    item {
+                                        Box(
+                                            modifier = Modifier.fillParentMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            LoadingPlaceholder("Buscando restaurantes...")
+                                        }
+                                    }
                                 }
 
                                 is SearchUiState.Success -> {
-                                    RestaurantSimpleList(
-                                        restaurants = searchState.restaurants,
-                                        onRestaurantClick = onRestaurantClick
-                                    )
+                                    items(searchState.restaurants) { restaurant ->
+                                        RestaurantItem(
+                                            restaurant = restaurant,
+                                            onClick = {
+                                                onRestaurantClick(
+                                                    restaurant.idRestaurante?.toLong() ?: 0L
+                                                )
+                                            }
+                                        )
+                                    }
                                 }
 
                                 is SearchUiState.Error -> {
-                                    VistaError(
-                                        mensaje = searchState.message,
-                                        onReintentar = { viewModel.onSearchSubmit() }
-                                    )
+                                    item {
+                                        Box(
+                                            modifier = Modifier.fillParentMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            VistaError(
+                                                mensaje = searchState.message,
+                                                onReintentar = { viewModel.onSearchSubmit() }
+                                            )
+                                        }
+                                    }
                                 }
 
                                 SearchUiState.Empty -> {
-                                    VistaEstado(
-                                        titulo = "Sin Resultados",
-                                        mensaje = "No se encontraron restaurantes con ese nombre.",
-                                        icono = Icons.Default.SearchOff,
-                                        colorIcono = Color.Gray,
-                                        onAccion = null
-                                    )
+                                    item {
+                                        Box(
+                                            modifier = Modifier.fillParentMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            VistaEstado(
+                                                titulo = "Sin Resultados",
+                                                mensaje = "No se encontraron restaurantes con ese nombre.",
+                                                icono = Icons.Default.SearchOff,
+                                                colorIcono = Color.Gray,
+                                                onAccion = null
+                                            )
+                                        }
+                                    }
                                 }
 
                                 SearchUiState.Idle -> Unit
                             }
                         } else if (viewModel.isAddressSearchMode) {
-                            when (addressSearchState) {
+                            when (val addressState = addressSearchState) {
                                 AddressSearchUiState.Loading -> {
-                                    LoadingPlaceholder("Cargando restaurantes cercanos...")
+                                    item {
+                                        Box(
+                                            modifier = Modifier.fillParentMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            LoadingPlaceholder("Cargando restaurantes cercanos...")
+                                        }
+                                    }
                                 }
 
                                 is AddressSearchUiState.Success -> {
-                                    RestaurantSimpleList(
-                                        restaurants = addressSearchState.restaurants,
-                                        onRestaurantClick = onRestaurantClick
-                                    )
+                                    items(addressState.restaurants) { restaurant ->
+                                        RestaurantItem(
+                                            restaurant = restaurant,
+                                            onClick = {
+                                                onRestaurantClick(
+                                                    restaurant.idRestaurante?.toLong() ?: 0L
+                                                )
+                                            }
+                                        )
+                                    }
                                 }
 
                                 is AddressSearchUiState.Error -> {
-                                    VistaError(
-                                        mensaje = addressSearchState.message,
-                                        onReintentar = { viewModel.refresh() }
-                                    )
+                                    item {
+                                        Box(
+                                            modifier = Modifier.fillParentMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            VistaError(
+                                                mensaje = addressState.message,
+                                                onReintentar = { viewModel.refresh() }
+                                            )
+                                        }
+                                    }
                                 }
 
                                 AddressSearchUiState.Empty -> {
-                                    VistaEstado(
-                                        titulo = "Zona sin cobertura",
-                                        mensaje = "Lo sentimos, no hay restaurantes disponibles en tu zona actualmente.",
-                                        icono = Icons.Default.Map,
-                                        colorIcono = Color.Gray,
-                                        onAccion = null
-                                    )
+                                    item {
+                                        Box(
+                                            modifier = Modifier.fillParentMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            VistaEstado(
+                                                titulo = "Zona sin cobertura",
+                                                mensaje = "Lo sentimos, no hay restaurantes disponibles en tu zona actualmente.",
+                                                icono = Icons.Default.Map,
+                                                colorIcono = Color.Gray,
+                                                onAccion = null
+                                            )
+                                        }
+                                    }
                                 }
 
                                 AddressSearchUiState.Idle -> Unit

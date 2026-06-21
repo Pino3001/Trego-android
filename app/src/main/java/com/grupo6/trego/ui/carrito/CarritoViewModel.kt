@@ -14,6 +14,7 @@ import com.grupo6.trego.data.model.DTOPreferenciaMP
 import com.grupo6.trego.data.model.DTOProducto
 import com.grupo6.trego.data.model.DTOProductoPedido
 import com.grupo6.trego.data.model.DTORestaurante
+import com.grupo6.trego.data.repository.LocationRepository
 import com.grupo6.trego.data.repository.PedidoRepository
 import com.grupo6.trego.data.repository.UsuarioRepository
 import kotlinx.coroutines.channels.Channel
@@ -24,7 +25,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 sealed class CarritoUiState {
-    object Cargando : CarritoUiState()               // nueva
+    object Cargando : CarritoUiState()
     object Vacio : CarritoUiState()
     object RestauranteCerrado : CarritoUiState()
     object PagoExitoso : CarritoUiState()
@@ -32,7 +33,6 @@ sealed class CarritoUiState {
     data class Cargado(val items: List<DTOProductoPedido>) : CarritoUiState()
     data class PagoPendiente(val preferencia: DTOPreferenciaMP) : CarritoUiState()
     data class AbrirMercadoPago(val url: String) : CarritoUiState()
-
 }
 
 sealed class DireccionesState {
@@ -45,6 +45,7 @@ class CarritoViewModel(
     private val repository: CarritoRepository,
     private val pedidoRepository: PedidoRepository,
     private val usuarioRepository: UsuarioRepository,
+    private val locationRepository: LocationRepository,
 ) : ViewModel() {
 
     var uiState by mutableStateOf<CarritoUiState>(CarritoUiState.Cargando)
@@ -70,7 +71,6 @@ class CarritoViewModel(
     private val _errorEvent = Channel<String>(Channel.BUFFERED)
     val errorEvent = _errorEvent.receiveAsFlow()
     private var carritoActual: DTOCarrito? = null
-
     private var preferenciaActual: DTOPreferenciaMP? = null
 
     private val _direccionesState = MutableStateFlow<DireccionesState>(DireccionesState.Cargando)
@@ -78,6 +78,17 @@ class CarritoViewModel(
 
     init {
         cargarCarrito()
+        observarUbicacion()
+    }
+
+    private fun observarUbicacion() {
+        viewModelScope.launch {
+            locationRepository.currentAddress.collect { direccion ->
+                if (direccionSeleccionada == null && direccion != null) {
+                    direccionSeleccionada = direccion
+                }
+            }
+        }
     }
 
     fun recargarCarrito() {
@@ -88,14 +99,12 @@ class CarritoViewModel(
         viewModelScope.launch { _errorEvent.send(mensaje) }
     }
 
-    // Carga el carrito que tiene el backend en el viewModel
     private fun cargarCarrito() {
         viewModelScope.launch {
             uiState = CarritoUiState.Cargando
             repository.obtenerCarrito()
                 .onSuccess { carrito ->
                     carritoActual = carrito
-                    Log.e("Carrito", carrito?.productos.toString())
                     _items.clear()
                     if (carrito != null) {
                         _items.addAll(carrito.productos ?: emptyList())
@@ -121,57 +130,107 @@ class CarritoViewModel(
                 _direccionesState.value = DireccionesState.Cargadas(direcciones)
             } else {
                 val error = result.exceptionOrNull()
-                _direccionesState.value =
-                    DireccionesState.Error(error?.message ?: "Error desconocido")
+                _direccionesState.value = DireccionesState.Error(error?.message ?: "Error desconocido")
             }
         }
     }
 
-    // Confirma los datos que se ingresaron en el modal de detalle donde se ingresa la cantidad, observaciones etc..
-    fun confirmarModal(item: DTOProductoPedido) {
-Log.e("Carrito", item.ingredientesAQuitar.toString())
+    // Compara si dos items son la misma combinación exacta, sin importar su idLinea
+    private fun sonMismaCombinacion(item1: DTOProductoPedido, item2: DTOProductoPedido): Boolean {
+        val mismoId = item1.producto?.idProducto == item2.producto?.idProducto
+        val mismosIngredientes = item1.ingredientesAQuitar?.toSet() == item2.ingredientesAQuitar?.toSet()
+        return mismoId && mismosIngredientes
+    }
+
+    fun confirmarModal(itemModificado: DTOProductoPedido) {
         viewModelScope.launch {
             uiState = CarritoUiState.Cargando
-            // ¿El producto ya existe en el carrito?
-            val existe = _items.any {
-                it.producto?.idProducto == item.producto?.idProducto &&
-                        it.ingredientesAQuitar == item.ingredientesAQuitar
-            }
 
-            if (existe) {
-                // EDITAR → modificar, no agregar
-                repository.modificarProducto(item)
+            if (esEdicion && itemModificado.idLinea != null) {
+                repository.modificarProducto(itemModificado)
                     .onSuccess { lineaActualizada ->
                         if (lineaActualizada != null) {
-                            val index = _items.indexOfFirst {
-                                it.producto?.idProducto == lineaActualizada.producto?.idProducto
+                            // 1. Si el backend fusionó esta línea con la que ya existía,
+                            // el idLinea que nos devuelve será diferente al que enviamos.
+                            if (lineaActualizada.idLinea != itemModificado.idLinea) {
+                                _items.removeAll { it.idLinea == itemModificado.idLinea }
                             }
-                            if (index >= 0) _items[index] = lineaActualizada
+
+                            // 2. LIMPIEZA EXTRA: Por si acaso, borramos cualquier OTRA línea en pantalla
+                            // que comparta la misma combinación exacta pero con distinto ID.
+                            _items.removeAll {
+                                it.idLinea != lineaActualizada.idLinea && sonMismaCombinacion(it, lineaActualizada)
+                            }
+
+                            // 3. Actualizamos la línea unificada con los datos correctos
+                            val index = _items.indexOfFirst { it.idLinea == lineaActualizada.idLinea }
+                            if (index >= 0) {
+                                _items[index] = lineaActualizada
+                            } else {
+                                _items.add(lineaActualizada) // Por si es totalmente nueva
+                            }
+
+                            actualizarTotal()
+                            actualizarEstado()
                         } else {
-                            _items.removeAll { it.producto?.idProducto == item.producto?.idProducto }
+                            cargarCarrito() // Respaldo seguro
                         }
-                        actualizarEstado()
                     }
-                    .onFailure { e ->
+                    .onFailure {
                         emitirError("Error al modificar producto")
-                        cargarCarrito() // refrescar por si hay inconsistencia
-                    }
-            } else {
-                // NUEVO → agregar
-                repository.agregarProducto(item)
-                    .onSuccess { carrito ->
-                        _items.clear()
-                        _items.addAll(carrito.productos ?: emptyList())
-                        total = carrito.total ?: 0.0
-                        actualizarEstado()
-                    }
-                    .onFailure { e ->
-                        emitirError("Error al agregar producto")
                         cargarCarrito()
                     }
+            } else {
+                agregarOModificarItem(itemModificado)
             }
-
             cerrarModal()
+        }
+    }
+
+    private suspend fun agregarOModificarItem(itemNuevo: DTOProductoPedido) {
+        // Buscamos si ya existe una línea con exactamente la misma configuración
+        val itemExistente = _items.firstOrNull { sonMismaCombinacion(it, itemNuevo) }
+
+        if (itemExistente != null) {
+            // Ya existe esta combinación. Le sumamos cantidad a esa línea usando SU idLinea.
+            val nuevaCantidad = (itemExistente.cantidad ?: 0) + (itemNuevo.cantidad ?: 1)
+            val precioUnitario = (itemExistente.producto?.calcularPrecioConDescuento()?.toFloat()) ?: 0f
+
+            // Gracias al método .copy() de las data classes, esto es súper limpio
+            val requestModificacion = itemExistente.copy(
+                cantidad = nuevaCantidad,
+                subtotal = precioUnitario * nuevaCantidad,
+                observaciones = itemNuevo.observaciones ?: itemExistente.observaciones // Mantiene observaciones
+            )
+
+            repository.modificarProducto(requestModificacion)
+                .onSuccess { lineaActualizada ->
+                    if (lineaActualizada != null) {
+                        val index = _items.indexOfFirst { it.idLinea == lineaActualizada.idLinea }
+                        if (index >= 0) _items[index] = lineaActualizada
+                        actualizarTotal()
+                    } else {
+                        cargarCarrito()
+                    }
+                    actualizarEstado()
+                }
+                .onFailure {
+                    emitirError("Error al modificar producto")
+                    cargarCarrito()
+                }
+        } else {
+            // No existe la combinación en el carrito, agregamos línea nueva
+            repository.agregarProducto(itemNuevo)
+                .onSuccess { carrito ->
+                    _items.clear()
+                    _items.addAll(carrito.productos ?: emptyList())
+                    total = carrito.total ?: 0.0
+                    actualizarEstado()
+                }
+                .onFailure {
+                    emitirError("Error al agregar producto")
+                    cargarCarrito()
+                }
         }
     }
 
@@ -182,35 +241,27 @@ Log.e("Carrito", item.ingredientesAQuitar.toString())
             return
         }
         viewModelScope.launch {
-            val precioUnitario: Float =
-                (item.producto?.calcularPrecioConDescuento()?.toFloat()) ?: 0f
-            val nuevoSubtotal = precioUnitario * nuevaCantidad
-            // Para modificar, enviamos idProducto en la raíz
-            val request = DTOProductoPedido(
-                producto = item.producto,
+            val precioUnitario = (item.producto?.calcularPrecioConDescuento()?.toFloat()) ?: 0f
+
+            // Usamos .copy() para crear la request asegurando que el idLinea viaje intacto
+            val request = item.copy(
                 cantidad = nuevaCantidad,
-                ingredientesAQuitar = item.ingredientesAQuitar,
-                subtotal = nuevoSubtotal,
-                observaciones = item.observaciones,
-                cantidadDisponible = item.cantidadDisponible
+                subtotal = precioUnitario * nuevaCantidad
             )
-            Log.e("Request", request.toString())
+
             repository.modificarProducto(request)
                 .onSuccess { lineaActualizada ->
                     if (lineaActualizada != null) {
-                        // actualizamos ese item en la lista local
-                        val index =
-                            _items.indexOfFirst { it.producto?.idProducto == lineaActualizada.producto?.idProducto }
+                        val index = _items.indexOfFirst { it.idLinea == lineaActualizada.idLinea }
                         if (index >= 0) {
                             _items[index] = lineaActualizada
                             actualizarTotal()
                         } else {
-                            // si no estaba, simplemente recargamos todo
                             cargarCarrito()
                         }
                     } else {
-                        // si devolvió null es porque se eliminó (cantidad 0)
-                        _items.removeAll { it.producto?.idProducto == item.producto?.idProducto }
+                        // Si nos devuelven null, lo borramos de la lista guiándonos por el idLinea
+                        _items.removeAll { it.idLinea == request.idLinea }
                     }
                     actualizarEstado()
                 }
@@ -222,22 +273,16 @@ Log.e("Carrito", item.ingredientesAQuitar.toString())
 
     fun eliminarItem(item: DTOProductoPedido) {
         viewModelScope.launch {
-            val request = DTOProductoPedido(
-                producto = item.producto,
-                cantidad = item.cantidad ?: 1,
-                ingredientesAQuitar = item.ingredientesAQuitar,
-                subtotal = item.subtotal,
-                observaciones = item.observaciones,
-                cantidadDisponible = item.cantidadDisponible
-            )
-            repository.eliminarProducto(request)
+            // Ya no hace falta armar el objeto a mano, le mandamos el item entero que trae su idLinea
+            repository.eliminarProducto(item)
                 .onSuccess { carrito ->
                     if (carrito != null) {
                         _items.clear()
                         _items.addAll(carrito.productos ?: emptyList())
                         total = carrito.total ?: 0.0
                     } else {
-                        _items.removeAll { it.producto?.idProducto == item.producto?.idProducto }
+                        // Borramos basándonos en el ID exacto de la línea
+                        _items.removeAll { it.idLinea == item.idLinea }
                     }
                     actualizarEstado()
                 }
@@ -264,19 +309,26 @@ Log.e("Carrito", item.ingredientesAQuitar.toString())
     // ─── MODAL ───
     fun abrirModalNuevoProducto(
         producto: DTOProducto,
-        restaurante: DTORestaurante
+        restaurante: DTORestaurante,
+        abierto: Boolean
     ) {
-        esEdicion = false
-        nombreRestaurante = restaurante.nombre.toString()
-        productoEnModal = DTOProductoPedido(
-            producto = producto,
-            cantidad = 1,
-            observaciones = null,
-            ingredientesAQuitar = emptyList(),
-            cantidadDisponible = producto.cantidadDisponible ?: 0,
-            subtotal = producto.calcularPrecioConDescuento().toFloat()
-        )
-        showModal = true
+        if (abierto) {
+            esEdicion = false
+            nombreRestaurante = restaurante.nombre.toString()
+            productoEnModal = DTOProductoPedido(
+                idLinea = null, // Explícitamente Nulo para que el sistema sepa que es nuevo
+                producto = producto,
+                cantidad = 1,
+                observaciones = null,
+                ingredientesAQuitar = emptyList(),
+                cantidadDisponible = producto.cantidadDisponible ?: 0,
+                subtotal = producto.calcularPrecioConDescuento().toFloat()
+            )
+            showModal = true
+        } else {
+            Log.e("Boton", "se Preciono")
+            emitirError("El restaurante se encuentra cerrado")
+        }
     }
 
     fun abrirModalEditar(item: DTOProductoPedido) {
@@ -316,7 +368,6 @@ Log.e("Carrito", item.ingredientesAQuitar.toString())
     }
 
     fun confirmarPedido() {
-        // Validaciones previas
         if (_items.isEmpty()) {
             emitirError("El carrito está vacío")
             return
@@ -337,9 +388,8 @@ Log.e("Carrito", item.ingredientesAQuitar.toString())
             pedidoRepository.confirmarPedido(direccion)
                 .onSuccess { preferencia ->
                     preferenciaActual = preferencia
-                    //  disparamos la orden de abrir la web
                     uiState = CarritoUiState.AbrirMercadoPago(
-                        url = preferencia.initPoint ?: "", // o initPoint en producción
+                        url = preferencia.initPoint ?: "",
                     )
                 }
                 .onFailure { e ->
@@ -348,45 +398,32 @@ Log.e("Carrito", item.ingredientesAQuitar.toString())
         }
     }
 
-    // ─── NUEVA FUNCIÓN EN EL VIEWMODEL ───
     fun onPreferenciaLanzada() {
         val preferencia = preferenciaActual
         if (preferencia != null) {
-            // Pasamos al estado pendiente usando la que teníamos guardada
             uiState = CarritoUiState.PagoPendiente(preferencia)
         } else {
-            // Respaldo por si algo raro pasa, recargamos el carrito
             cargarCarrito()
         }
     }
 
-    // ═══ FUNCIONES PARA EL DEEP LINK (ACTUALIZACIÓN OPTIMISTA) ═══
-
     fun marcarPagoExitoso() {
-        // 1. Vaciamos el carrito localmente de forma optimista
         _items.clear()
         total = 0.0
         carritoActual = null
-
-        // 2. Cambiamos el estado para que la app sepa que fue un éxito
         uiState = CarritoUiState.PagoExitoso
     }
 
     fun marcarPagoRechazado() {
-        // Solo cambiamos el estado, los items siguen en el carrito
-        // para que el usuario pueda intentar pagar de nuevo.
         uiState = CarritoUiState.PagoRechazado
     }
 
     fun marcarPagoPendiente() {
-        // Usamos la preferencia que ya habías guardado en confirmarPedido()
         val preferencia = preferenciaActual
         if (preferencia != null) {
             uiState = CarritoUiState.PagoPendiente(preferencia)
         } else {
-            // Si por alguna razón no está en memoria, volvemos a mostrar el carrito normal
             actualizarEstado()
         }
     }
-
 }
