@@ -71,7 +71,7 @@ val appModule = module {
     // Retrofit
     single {
         Retrofit.Builder()
-            .baseUrl("http://localhost:8080/api/")
+            .baseUrl("http://ec2-100-59-203-246.compute-1.amazonaws.com/api/")
             .client(get())
             .addConverterFactory(GsonConverterFactory.create(get()))
             .build()

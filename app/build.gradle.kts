@@ -84,7 +84,11 @@ dependencies {
     // Imágenes
     implementation(libs.coil.compose)
     implementation(libs.coil.svg)
-    implementation(libs.cloudinary.android)
+    implementation(libs.cloudinary.android) {
+        // Fresco arrastra libimagepipeline.so / libnative-imagetranscoder.so, que NO están alineados a 16 KB
+        // Solo se usa Cloudinary
+        exclude(group = "com.facebook.fresco")
+    }
 
     // Permisos en Compose
     implementation(libs.accompanist.permissions)

@@ -34,7 +34,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.ktx.auth
@@ -89,20 +93,35 @@ fun FormInicio(
 
             scope.launch {
                 try {
-                    val googleIdOption = GetGoogleIdOption.Builder()
-                        .setFilterByAuthorizedAccounts(false)
-                        .setServerClientId("360954493024-4l2rn17bngm5rjhdnrpnh10u6jbdel0i.apps.googleusercontent.com")
-                        .build()
+                    val serverClientId =
+                        "360954493024-4l2rn17bngm5rjhdnrpnh10u6jbdel0i.apps.googleusercontent.com"
 
-                    val request = GetCredentialRequest.Builder()
-                        .addCredentialOption(googleIdOption)
-                        .build()
-
-                    Log.d(TAG, "🟢 1. Abriendo el selector de CredentialManager...")
-                    val result = credentialManager.getCredential(
-                        context = context,
-                        request = request
-                    )
+                    // 1er intento: cuentas ya autorizadas en el dispositivo (bottom sheet rápido).
+                    // Evita el "dispositivo no válido" cuando ya hay una cuenta vinculada.
+                    val result: GetCredentialResponse = try {
+                        Log.d(TAG, "🟢 1. Abriendo selector con cuentas autorizadas...")
+                        val authorizedOption = GetGoogleIdOption.Builder()
+                            .setFilterByAuthorizedAccounts(true)
+                            .setServerClientId(serverClientId)
+                            .setAutoSelectEnabled(false)
+                            .build()
+                        credentialManager.getCredential(
+                            context = context,
+                            request = GetCredentialRequest.Builder()
+                                .addCredentialOption(authorizedOption)
+                                .build()
+                        )
+                    } catch (e: NoCredentialException) {
+                        // Fallback: botón "Sign in with Google", muestra TODAS las cuentas.
+                        Log.d(TAG, "🟡 Sin cuentas autorizadas, usando GetSignInWithGoogleOption")
+                        val signInOption = GetSignInWithGoogleOption.Builder(serverClientId).build()
+                        credentialManager.getCredential(
+                            context = context,
+                            request = GetCredentialRequest.Builder()
+                                .addCredentialOption(signInOption)
+                                .build()
+                        )
+                    }
 
                     val googleCredential = GoogleIdTokenCredential.createFrom(result.credential.data)
 
@@ -147,6 +166,14 @@ fun FormInicio(
                         }
                     }
 
+                } catch (e: NoCredentialException) {
+                    // El usuario llego al selector pero Google NO emitio token.
+                    Log.e(TAG, "❌ NoCredentialException (revisar SHA-1 en Firebase): ${e.message}", e)
+                    errorMessage = "Google no pudo validar la app. Verificá que el SHA-1 de la " +
+                            "firma esté registrado en Firebase."
+                } catch (e: GetCredentialException) {
+                    Log.e(TAG, "❌ ${e.javaClass.simpleName} - type=${e.type} - ${e.message}", e)
+                    errorMessage = "Error de Google (${e.javaClass.simpleName}): ${e.message}"
                 } catch (e: Exception) {
                     // 🔍 LOG 3: Si el selector de Google se cae o se cierra solo, saltará aquí
                     Log.e(TAG, "❌ ERROR CRÍTICO en el proceso de Autenticación: ${e.message}", e)
