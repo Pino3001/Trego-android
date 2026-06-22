@@ -27,4 +27,10 @@
         <!-- localhost estándar -->
         <domain includeSubdomains="true">localhost</domain>
     </domain-config>
+
+    <!-- Backend en EC2 servido por HTTP (sin TLS en la instancia).
+         Se permite cleartext para el DNS publico de AWS  -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">compute-1.amazonaws.com</domain>
+    </domain-config>
 </network-security-config>
