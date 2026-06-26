@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.grupo6.trego.data.model.DTOProducto
 import com.grupo6.trego.data.model.EnumTipoProducto
+import com.grupo6.trego.data.utilities.ensureCloudinaryTransformation
 import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.ComboGreen
 import com.grupo6.trego.ui.theme.ComboGreenDark
@@ -99,7 +100,7 @@ fun ProductoItem(
 
             if (producto.urlImagen != null) {
                 AsyncImage(
-                    model = producto.urlImagen,
+                    model = producto.urlImagen.ensureCloudinaryTransformation("w_150,h_150,c_fill,g_auto"),
                     contentDescription = producto.nombre,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier

@@ -8,17 +8,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.layout.layout
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.Tune
@@ -28,6 +27,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,6 +51,7 @@ import com.grupo6.trego.ui.home.ofertas.componentes.OfertaListItem
 import com.grupo6.trego.ui.home.platos.componentes.PlatoFilterBottomSheet
 import com.grupo6.trego.ui.menu.MenuUiEvent
 import com.grupo6.trego.ui.menu.MenuViewModel
+import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 import org.koin.androidx.compose.koinViewModel
 
@@ -63,7 +65,7 @@ fun OfertaScreen(
     val activity = (LocalContext.current as? ComponentActivity)
         ?: error("ComponentActivity no disponible")
     val menuViewModel: MenuViewModel = koinViewModel(viewModelStoreOwner = activity)
-
+    val state = rememberPullToRefreshState()
     var showFilterSheet by remember { mutableStateOf(false) }
 
     val uiState = viewModel.uiState
@@ -98,7 +100,17 @@ fun OfertaScreen(
         PullToRefreshBox(
             isRefreshing = viewModel.isRefreshing,
             onRefresh = { viewModel.loadOfertas(direccion) },
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            state = state,
+            indicator = {
+                Indicator(
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    isRefreshing = viewModel.isRefreshing,
+                    containerColor = BlancoCard,
+                    color = TregoOrange,
+                    state = state
+                )
+            }
         ) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
@@ -145,6 +157,11 @@ fun OfertaScreen(
                                 )
                             }
                         }
+                    }
+                }
+
+                if (uiState is OfertaUIState.Success) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
                         Text(
                             text = "🏷 Ofertas del dia",
                             style = MaterialTheme.typography.titleMedium,
@@ -158,16 +175,28 @@ fun OfertaScreen(
 
                 when (uiState) {
                     is OfertaUIState.Loading -> {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
-                                LoadingPlaceholder("Cargando ofertas...")
+                        if (!viewModel.isRefreshing) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(400.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    LoadingPlaceholder("Cargando ofertas...")
+                                }
                             }
                         }
                     }
 
                     is OfertaUIState.Empty -> {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(400.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 VistaEstado(
                                     titulo = "Sin resultados",
                                     mensaje = "No se encontraron ofertas que coincidan con los filtros aplicados.",
@@ -180,15 +209,8 @@ fun OfertaScreen(
                     }
 
                     is OfertaUIState.Success -> {
-                        itemsIndexed(uiState.platos) { index, productoZona ->
-                            val col = index % 2
-                            Box(
-                                modifier = Modifier
-                                    .padding(
-                                        start = if (col == 0) 16.dp else 8.dp,
-                                        end = if (col == 1) 16.dp else 8.dp
-                                    )
-                            ) {
+                        items(uiState.platos) { productoZona ->
+                            Box(modifier = Modifier.padding(horizontal = 8.dp)) {
                                 OfertaListItem(
                                     productoZona = productoZona,
                                     onClick = { menuViewModel.abrirMenuConProducto(productoZona.producto) }
@@ -199,7 +221,12 @@ fun OfertaScreen(
 
                     is OfertaUIState.Error -> {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(400.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 VistaError(
                                     mensaje = uiState.message,
                                     onReintentar = { viewModel.loadOfertas(direccion) }

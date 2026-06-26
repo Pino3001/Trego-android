@@ -52,6 +52,7 @@ import com.grupo6.trego.data.model.DTODireccion
 import com.grupo6.trego.data.utilities.LocationState
 import com.grupo6.trego.data.utilities.RequestLocation
 import com.grupo6.trego.data.utilities.reverseGeocode
+import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,7 +99,7 @@ fun DireccionSelectorModal(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        containerColor = Color.White
+        containerColor = BlancoCard
     ) {
         Column(
             modifier = Modifier

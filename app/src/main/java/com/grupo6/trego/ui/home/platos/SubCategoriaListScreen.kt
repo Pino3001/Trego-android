@@ -7,9 +7,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -24,6 +24,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +42,7 @@ import com.grupo6.trego.ui.componentes.VistaEstado
 import com.grupo6.trego.ui.home.componentes.CategoryFilterBottomSheet
 import com.grupo6.trego.ui.home.componentes.LoadingPlaceholder
 import com.grupo6.trego.ui.home.platos.componentes.CardSubcategoria
+import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 import org.koin.androidx.compose.koinViewModel
 
@@ -50,7 +53,7 @@ fun SubCategoriaListScreen(
 ) {
     val viewModel: SubCategoriaViewModel = koinViewModel()
     var showFilterSheet by remember { mutableStateOf(false) }
-
+    val state = rememberPullToRefreshState()
     val uiState = viewModel.uiState
 
     if (showFilterSheet) {
@@ -68,7 +71,17 @@ fun SubCategoriaListScreen(
         PullToRefreshBox(
             isRefreshing = viewModel.isRefreshing,
             onRefresh = { viewModel.fetchSubcategorias() },
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            state = state,
+            indicator = {
+                Indicator(
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    isRefreshing = viewModel.isRefreshing,
+                    containerColor = BlancoCard,
+                    color = TregoOrange,
+                    state = state
+                )
+            }
         ) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
@@ -120,16 +133,28 @@ fun SubCategoriaListScreen(
 
                 when (uiState) {
                     is SubCategoriaUIstate.Cargando -> {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
-                                LoadingPlaceholder("Cargando subcategorías...")
+                        if (!viewModel.isRefreshing) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(400.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    LoadingPlaceholder("Cargando subcategorías...")
+                                }
                             }
                         }
                     }
 
                     is SubCategoriaUIstate.Vacio -> {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(400.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 VistaEstado(
                                     titulo = "Sin resultados",
                                     mensaje = "No se encontraron subcategorías que coincidan con la búsqueda.",
@@ -147,8 +172,12 @@ fun SubCategoriaListScreen(
                             Box(
                                 modifier = Modifier
                                     .padding(
-                                        start = when(col) { 0 -> 16.dp; 1 -> 10.dp; else -> 4.dp },
-                                        end = when(col) { 0 -> 4.dp; 1 -> 10.dp; else -> 16.dp }
+                                        start = when (col) {
+                                            0 -> 16.dp; 1 -> 10.dp; else -> 4.dp
+                                        },
+                                        end = when (col) {
+                                            0 -> 4.dp; 1 -> 10.dp; else -> 16.dp
+                                        }
                                     )
                             ) {
                                 CardSubcategoria(
@@ -161,7 +190,12 @@ fun SubCategoriaListScreen(
 
                     is SubCategoriaUIstate.Error -> {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(400.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 VistaError(
                                     mensaje = uiState.mensaje,
                                     onReintentar = { viewModel.fetchSubcategorias() }

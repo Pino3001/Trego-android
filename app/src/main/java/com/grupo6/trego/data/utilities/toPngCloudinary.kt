@@ -11,3 +11,13 @@ fun String.toCloudinaryPng(): String {
         this.replace(Regex("\\.svg(\\?.*)?$"), ".png")
     }
 }
+
+fun String.ensureCloudinaryTransformation(transformation: String): String {
+    if (!this.contains("/upload/") || this.contains("/$transformation/")) {
+        return this
+    }
+
+    val urlLimpia = this.replace(Regex("/upload/(?!v\\d+)[^/]+/"), "/upload/")
+
+    return urlLimpia.replace("/upload/", "/upload/$transformation/")
+}

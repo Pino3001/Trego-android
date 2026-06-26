@@ -2,6 +2,7 @@ package com.grupo6.trego.ui.carrito.componentes
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
@@ -39,6 +41,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.PlatformTextStyle
@@ -47,16 +51,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.grupo6.trego.data.model.DTOIngrediente
 import com.grupo6.trego.data.model.DTOProductoPedido
+import com.grupo6.trego.data.utilities.ensureCloudinaryTransformation
 import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.ComboGreen
 import com.grupo6.trego.ui.theme.ComboGreenDark
 import com.grupo6.trego.ui.theme.GreenPlaceholder
-import com.grupo6.trego.ui.theme.OrangePlaceholder
 import com.grupo6.trego.ui.theme.TregoOrange
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,7 +96,7 @@ fun ProductoDetalleModal(
             // Imagen del producto
             if (item.producto?.urlImagen != null && item.producto.urlImagen != "") {
                 AsyncImage(
-                    model = item.producto.urlImagen,
+                    model = item.producto.urlImagen.ensureCloudinaryTransformation("w_800,h_400,c_fill,g_auto"),
                     contentDescription = item.producto.nombre,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -100,7 +105,6 @@ fun ProductoDetalleModal(
                         .clip(RoundedCornerShape(12.dp))
                 )
             } else {
-                // Placeholder cuando no hay imagen
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -210,36 +214,47 @@ fun ProductoDetalleModal(
             Spacer(Modifier.height(8.dp))
 
             if (!item.producto?.ingredientes.isNullOrEmpty()) {
-                Text("Ingredientes opcionales", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                Spacer(Modifier.height(4.dp))
+                Text("Ingredientes a quitar:", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                Spacer(Modifier.height(8.dp))
 
                 val ingredientes = item.producto.ingredientes
-
-                ingredientes.chunked(4).forEach { fila ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        fila.forEach { ing ->
-                            val quitado = ingredientesQuitados.contains(ing)
-                            FilterChip(
-                                selected = quitado,
-                                onClick = {
-                                    ingredientesQuitados = if (quitado) {
-                                        ingredientesQuitados - ing
-                                    } else {
-                                        ingredientesQuitados + ing
-                                    }
-                                },
-                                label = { Text(ing.nombre, fontSize = 12.sp) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = TregoOrange,
-                                    selectedLabelColor = Color.White
+                val horizontalScrollState = rememberScrollState()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(horizontalScrollState)
+                        .padding(bottom = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ingredientes.forEach { ing ->
+                        val quitado = ingredientesQuitados.contains(ing)
+                        FilterChip(
+                            selected = quitado,
+                            onClick = {
+                                ingredientesQuitados = if (quitado) {
+                                    ingredientesQuitados - ing
+                                } else {
+                                    ingredientesQuitados + ing
+                                }
+                            },
+                            label = {
+                                Text(
+                                    text = ing.nombre,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = TregoOrange,
+                                selectedLabelColor = Color.White
                             )
-                        }
+                        )
                     }
                 }
+
+                Spacer(Modifier.height(8.dp))
             }
 
             if (!item.producto?.combo?.productosIncluidos.isNullOrEmpty()) {
@@ -264,15 +279,14 @@ fun ProductoDetalleModal(
                                 .clip(RoundedCornerShape(99.dp))
                                 .background(GreenPlaceholder)
                                 .padding(
-                                    start  = if (cantidad > 1) 3.dp else 12.dp,
-                                    end    = 12.dp,
-                                    top    = 5.dp,
+                                    start = if (cantidad > 1) 3.dp else 12.dp,
+                                    end = 12.dp,
+                                    top = 5.dp,
                                     bottom = 5.dp
                                 ),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            // Badge de cantidad — solo cuando hay más de uno
                             if (cantidad > 1) {
                                 Box(
                                     modifier = Modifier
@@ -294,7 +308,9 @@ fun ProductoDetalleModal(
                                                 includeFontPadding = false
                                             )
                                         ),
-                                        modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.Center)
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .wrapContentSize(Alignment.Center)
                                     )
                                 }
                             }
@@ -313,7 +329,6 @@ fun ProductoDetalleModal(
 
             Spacer(Modifier.height(8.dp))
 
-            // Comentario — siempre visible, FIX del bug del ?.let
             Text("Comentarios", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
             Spacer(Modifier.height(4.dp))
             OutlinedTextField(
@@ -331,9 +346,7 @@ fun ProductoDetalleModal(
 
             Spacer(Modifier.height(12.dp))
 
-            // Subtotal
-            val precioUnitario =
-                (item.producto?.calcularPrecioConDescuento() ?: 0)
+            val precioUnitario = (item.producto?.calcularPrecioConDescuento() ?: 0)
             val subtotal = precioUnitario * cantidad
             Row(
                 modifier = Modifier.fillMaxWidth(),

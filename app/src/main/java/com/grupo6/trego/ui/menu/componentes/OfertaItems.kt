@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.grupo6.trego.data.model.DTOProducto
+import com.grupo6.trego.data.utilities.ensureCloudinaryTransformation
 import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 
@@ -61,7 +62,7 @@ fun OfertaItem(producto: DTOProducto, onClick: () -> Unit) {
                 ) {
                     if (producto.urlImagen != null) {
                         AsyncImage(
-                            model = producto.oferta?.urlImagen ?: producto.urlImagen,
+                            model = producto.oferta?.urlImagen?.ensureCloudinaryTransformation("w_150,h_150,c_fill,g_auto") ?: producto.urlImagen.ensureCloudinaryTransformation("w_150,h_150,c_fill,g_auto"),
                             contentDescription = producto.nombre,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()

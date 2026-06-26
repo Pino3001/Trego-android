@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.grupo6.trego.data.model.DTOSubCategoria
+import com.grupo6.trego.data.utilities.ensureCloudinaryTransformation
 import com.grupo6.trego.ui.theme.BlancoCard
 
 @Composable
@@ -44,7 +45,7 @@ fun CardSubcategoria(
         Column {
             // ── Imagen del plato ──────────────────────────────────────────
             AsyncImage(
-                model = subCategoria.urlImagen,
+                model = subCategoria.urlImagen.ensureCloudinaryTransformation("w_200,h_200,c_fill,g_auto"),
                 contentDescription = subCategoria.nombre,
                 modifier = Modifier
                     .fillMaxWidth()

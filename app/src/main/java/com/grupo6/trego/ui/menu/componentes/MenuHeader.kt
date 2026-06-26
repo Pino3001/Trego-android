@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -30,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -39,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.grupo6.trego.data.model.DTORestaurante
+import com.grupo6.trego.data.utilities.ensureCloudinaryTransformation
 import com.grupo6.trego.ui.componentes.StarRatingSelector
 import com.grupo6.trego.ui.theme.TregoOrange
 
@@ -56,7 +59,7 @@ fun MenuHeader(
     ) {
         // 1. Imagen de fondo (Ocupará toda la caja, incluso detrás de la barra de estado)
         AsyncImage(
-            model = restaurante.fotoPortada,
+            model = restaurante.fotoPortada?.ensureCloudinaryTransformation("w_800,h_400,c_fill,g_auto"),
             contentDescription = "Portada del restaurante",
             contentScale = ContentScale.Crop,
             modifier = Modifier.matchParentSize()
@@ -94,13 +97,18 @@ fun MenuHeader(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             IconButton(
-                onClick = onBack,
-                modifier = Modifier.padding(start = 8.dp, top = 8.dp)
+                onClick = onBack, modifier = Modifier
+                    .size(38.dp)
+                    .background(
+                        color = Color.White.copy(alpha = 0.1f),
+                        shape = CircleShape
+                    )
+                    .clip(CircleShape)
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Volver",
-                    tint = Color.White
+                    imageVector = Icons.Filled.ArrowBackIosNew,
+                    tint = Color.White,
+                    contentDescription = "Volver"
                 )
             }
 

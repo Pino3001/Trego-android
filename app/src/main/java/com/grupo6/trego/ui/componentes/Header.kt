@@ -44,7 +44,9 @@ fun TregoHeader(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
         ) {
             if (navigationIcon != null) {
                 Box(
@@ -55,8 +57,6 @@ fun TregoHeader(
                     navigationIcon()
                 }
             }
-
-            // 2. Título (Centro absoluto)
             Text(
                 text = title.uppercase(),
                 modifier = Modifier
@@ -69,7 +69,6 @@ fun TregoHeader(
                 color = Color.White
             )
 
-            // 3. Iconos Derechos (Acciones)
             if (actions != null) {
                 Row(
                     modifier = Modifier
@@ -81,10 +80,8 @@ fun TregoHeader(
                 )
             }
         }
-
-        // --- ÁREA INFERIOR: PÍLDORA O EXTRAS ---
         if (bottomContent != null) {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             Column(
                 modifier = Modifier

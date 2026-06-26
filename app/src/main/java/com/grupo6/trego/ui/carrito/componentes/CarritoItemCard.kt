@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.grupo6.trego.data.model.DTOProductoPedido
+import com.grupo6.trego.data.utilities.ensureCloudinaryTransformation
 import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 
@@ -51,7 +52,7 @@ fun CarritoItemCard(
             // Imagen
             if (item.producto?.urlImagen != null) {
                 AsyncImage(
-                    model = item.producto.urlImagen,
+                    model = item.producto.urlImagen.ensureCloudinaryTransformation("w_200,h_200,c_fill,g_auto"),
                     contentDescription = item.producto.nombre,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier

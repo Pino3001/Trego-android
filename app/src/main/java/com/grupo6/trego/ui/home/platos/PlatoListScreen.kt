@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -27,6 +27,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,6 +52,7 @@ import com.grupo6.trego.ui.home.platos.componentes.CardPlato
 import com.grupo6.trego.ui.home.platos.componentes.PlatoFilterBottomSheet
 import com.grupo6.trego.ui.menu.MenuUiEvent
 import com.grupo6.trego.ui.menu.MenuViewModel
+import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 import org.koin.androidx.compose.koinViewModel
 
@@ -65,7 +68,7 @@ fun PlatoListScreen(
     val activity = LocalContext.current as? ComponentActivity
         ?: error("ComponentActivity no disponible")
     val menuViewModel: MenuViewModel = koinViewModel(viewModelStoreOwner = activity)
-
+    val state = rememberPullToRefreshState()
     var showFilterSheet by remember { mutableStateOf(false) }
 
     val uiState = viewModel.uiState
@@ -100,7 +103,17 @@ fun PlatoListScreen(
         PullToRefreshBox(
             isRefreshing = viewModel.isRefreshing,
             onRefresh = { viewModel.loadPlatos(subCategoria, direccion) },
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            state = state,
+            indicator = {
+                Indicator(
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    isRefreshing = viewModel.isRefreshing,
+                    containerColor = BlancoCard,
+                    color = TregoOrange,
+                    state = state
+                )
+            }
         ) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
@@ -160,16 +173,28 @@ fun PlatoListScreen(
 
                 when (uiState) {
                     is PlatoUIState.Loading -> {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
-                                LoadingPlaceholder("Cargando platos...")
+                        if (!viewModel.isRefreshing) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(400.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    LoadingPlaceholder("Cargando platos...")
+                                }
                             }
                         }
                     }
 
                     is PlatoUIState.Empty -> {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(400.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 VistaEstado(
                                     titulo = "Sin resultados",
                                     mensaje = "No se encontraron platos que coincidan con los filtros aplicados.",
@@ -201,7 +226,12 @@ fun PlatoListScreen(
 
                     is PlatoUIState.Error -> {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(400.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 VistaError(
                                     mensaje = uiState.message,
                                     onReintentar = { viewModel.loadPlatos(subCategoria, direccion) }

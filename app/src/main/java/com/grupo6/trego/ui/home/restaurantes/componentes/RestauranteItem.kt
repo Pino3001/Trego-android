@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.grupo6.trego.R
 import com.grupo6.trego.data.model.DTORestaurante
+import com.grupo6.trego.data.utilities.ensureCloudinaryTransformation
 import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 import com.grupo6.trego.ui.theme.TregoSecondary
@@ -70,7 +71,7 @@ fun RestaurantItem(
 
             // ── 1. Foto de perfil ─────────────────────────────────────────
             AsyncImage(
-                model = restaurant.fotoPerfil,
+                model = restaurant.fotoPerfil?.ensureCloudinaryTransformation("w_150,h_150,c_fill,g_auto"),
                 contentDescription = restaurant.nombre,
                 contentScale = ContentScale.Crop,
                 placeholder = painterResource(id = R.drawable.tregologo),

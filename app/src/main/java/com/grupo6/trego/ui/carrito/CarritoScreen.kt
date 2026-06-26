@@ -23,9 +23,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -41,6 +43,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -50,9 +53,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -69,6 +74,7 @@ import com.grupo6.trego.ui.carrito.componentes.CarritoItemCard
 import com.grupo6.trego.ui.carrito.componentes.DireccionSelectorModal
 import com.grupo6.trego.ui.carrito.componentes.ProductoDetalleModal
 import com.grupo6.trego.ui.componentes.TregoHeader
+import com.grupo6.trego.ui.componentes.VistaError
 import com.grupo6.trego.ui.componentes.VistaEstado
 import com.grupo6.trego.ui.pedidos.PedidoViewModel
 import com.grupo6.trego.ui.theme.TregoOrange
@@ -83,18 +89,19 @@ fun CarritoScreen(
     val activity = (LocalContext.current as? ComponentActivity)
         ?: error("La vista no está alojada en una ComponentActivity")
 
-    // 🌟 Compartimos ViewModels con la Activity como owner para sincronización total
     val viewModel: CarritoViewModel = koinViewModel(viewModelStoreOwner = activity)
     val pedidoViewModel: PedidoViewModel = koinViewModel(viewModelStoreOwner = activity)
 
     var mostrarSelectorDireccion by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
-
+    var pagoProcesado by rememberSaveable { mutableStateOf(false) }
     var procesandoPago by remember { mutableStateOf(false) }
 
     // ═══ PROCESAR RESULTADO DE DEEP LINK (MERCADO PAGO) ═══
     LaunchedEffect(statusDePago) {
+        if (statusDePago == null || pagoProcesado) return@LaunchedEffect
         Log.d("DeepLink", "Status recibido: $statusDePago")
+        pagoProcesado = true
         when (statusDePago) {
             "success" -> {
                 viewModel.marcarPagoExitoso()
@@ -174,7 +181,16 @@ fun CarritoScreen(
 
     Scaffold(
         containerColor = Color.White,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(
+                    containerColor = TregoOrange,
+                    contentColor = Color.White,
+                    snackbarData = data,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+        },
         topBar = {
             TregoHeader(
                 title = "CARRITO",
@@ -187,12 +203,18 @@ fun CarritoScreen(
                             } else {
                                 navController.popBackStack()
                             }
-                        }
+                        }, modifier = Modifier
+                            .size(38.dp)
+                            .background(
+                                color = Color.White.copy(alpha = 0.1f),
+                                shape = CircleShape
+                            )
+                            .clip(CircleShape)
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver",
-                            tint = Color.White
+                            imageVector = Icons.Filled.ArrowBackIosNew,
+                            tint = Color.White,
+                            contentDescription = "Volver"
                         )
                     }
                 },
@@ -207,10 +229,9 @@ fun CarritoScreen(
                         }
                     }
                 },
-                bottomPadding = 4.dp,
                 bottomContent = {
                     Text(
-                        text = viewModel.nombreRestaurante.ifBlank { "Tu Pedido" },
+                        text = viewModel.nombreRestaurante.ifBlank { "" },
                         fontSize = 24.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White,
@@ -278,6 +299,13 @@ fun CarritoScreen(
                         Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) { CircularProgressIndicator(color = TregoOrange) }
+                }
+
+                is CarritoUiState.Error -> {
+                    VistaError(
+                        mensaje = state.message,
+                        onReintentar = { viewModel.recargarCarrito() }
+                    )
                 }
 
                 is CarritoUiState.PagoExitoso -> {

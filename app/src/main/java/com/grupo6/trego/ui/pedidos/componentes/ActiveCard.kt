@@ -1,32 +1,36 @@
 package com.grupo6.trego.ui.pedidos.componentes
 
-import android.R.attr.onClick
-import android.R.attr.order
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.Button
@@ -39,7 +43,6 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,21 +51,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.grupo6.trego.ui.componentes.ConfirmDialogComponent
 import com.grupo6.trego.data.model.DTOCrearReclamoRequest
 import com.grupo6.trego.data.model.EnumEstadoPedido
 import com.grupo6.trego.data.model.PedidoUiModel
+import com.grupo6.trego.ui.componentes.ConfirmDialogComponent
 import com.grupo6.trego.ui.theme.BlancoCard
-import com.grupo6.trego.ui.theme.ContainerButon
 import com.grupo6.trego.ui.theme.TregoOrange
 import com.grupo6.trego.ui.theme.TregoSecondary
-import com.grupo6.trego.ui.theme.onCancelar
 import java.time.format.DateTimeFormatter
 
 data class BadgeColors(
@@ -78,29 +82,36 @@ fun getEstadoPedidoColors(estado: EnumEstadoPedido): BadgeColors = when (estado)
     EnumEstadoPedido.Entregado -> BadgeColors(Color(0xFFE0F2F1), Color(0xFF00695C))
     EnumEstadoPedido.Cancelado -> BadgeColors(Color(0xFFF3E5F5), Color(0xFF6A1B9A))
     EnumEstadoPedido.Reembolsado -> BadgeColors(Color(0xFFE8EAF6), Color(0xFF283593))
-    else -> {
-        BadgeColors(Color(0xFF000000), Color(0xFFF5F5F5))
-    }
+    else -> BadgeColors(Color(0xFF000000), Color(0xFFF5F5F5))
 }
 
 val timeFormatter: DateTimeFormatter? = DateTimeFormatter.ofPattern("HH:mm")
 
+private val estadosPedido = listOf(
+    EnumEstadoPedido.Pagado,
+    EnumEstadoPedido.Aprobado,
+    EnumEstadoPedido.EnCamino,
+    EnumEstadoPedido.Entregado
+)
+
+private fun estadoIndex(estado: EnumEstadoPedido?): Int =
+    estadosPedido.indexOf(estado).takeIf { it >= 0 } ?: 0
+
 @Composable
 fun ActivePedidoCard(
     order: PedidoUiModel,
-    onPhoneClick: () -> Unit = {},
     onCancelClick: () -> Unit = {},
     onClickReclamo: (request: DTOCrearReclamoRequest, onSuccess: () -> Unit) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val badgeColors = getEstadoPedidoColors(order.pedido.estado ?: EnumEstadoPedido.Entregado)
-    val DangerRed = Color(0xFFE24B4A)
-    val DangerRedLight = Color(0xFFFCEBEB)
-    val puedeReclamar = order.pedido.estado == EnumEstadoPedido.Aprobado || order.pedido.estado == EnumEstadoPedido.EnCamino
-    var reclamar      by remember { mutableStateOf(false) }
-    var reclamoTexto  by remember { mutableStateOf("") }
+    val puedeReclamar = order.pedido.estado == EnumEstadoPedido.Aprobado ||
+            order.pedido.estado == EnumEstadoPedido.EnCamino
+    var reclamar by remember { mutableStateOf(false) }
+    var reclamoTexto by remember { mutableStateOf("") }
     var mostrarConfirmarCancelReclamo by remember { mutableStateOf(false) }
     val maxChars = 200
+    val context = LocalContext.current
+    val currentStep = estadoIndex(order.pedido.estado)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -109,10 +120,12 @@ fun ActivePedidoCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // --- Fila superior: nombre, pedido, badge ---
+
+            // --- Header: nombre + botón ícono de teléfono ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -128,64 +141,38 @@ fun ActivePedidoCard(
                         color = Color.Gray
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                // Badge de estado
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = badgeColors.backgroundColor
+                Spacer(modifier = Modifier.width(12.dp))
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(TregoOrange.copy(alpha = 0.12f))
+                        .clickable {
+                            val intent = Intent(Intent.ACTION_DIAL).apply {
+                                data = Uri.parse("tel:${order.telefonoRestaurante}")
+                            }
+                            context.startActivity(intent)
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = order.pedido.estado.toString(),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = badgeColors.textColor
-                    )
-                }
-            }
-
-            // --- Divisor ---
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 10.dp),
-                color = Color(0xFFF0F0F0)
-            )
-
-            // --- Teléfono (clickable) ---
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onPhoneClick() }
-                    .padding(vertical = 3.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.Phone,
-                        contentDescription = null,
+                        contentDescription = "Llamar al restaurante",
                         tint = TregoOrange,
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = order.telefonoRestaurante,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = TregoOrange
+                        modifier = Modifier.size(18.dp)
                     )
                 }
-                Icon(
-                    Icons.Default.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = TregoOrange,
-                    modifier = Modifier.size(14.dp)
-                )
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // --- Progress Stepper ---
+            OrderProgressStepper(currentStep = currentStep)
 
             // --- Divisor ---
             HorizontalDivider(
-                modifier = Modifier.padding(vertical = 10.dp),
-                color = Color(0xFFF0F0F0)
+                modifier = Modifier.padding(vertical = 12.dp),
+                color = Color(0xFFEBEBEB)
             )
 
             // --- Productos (expandible) ---
@@ -211,7 +198,6 @@ fun ActivePedidoCard(
                 )
             }
 
-            // Lista animada de productos
             AnimatedVisibility(
                 visible = expanded,
                 enter = expandVertically(),
@@ -242,8 +228,8 @@ fun ActivePedidoCard(
 
             // --- Divisor ---
             HorizontalDivider(
-                modifier = Modifier.padding(vertical = 10.dp),
-                color = Color(0xFFF0F0F0)
+                modifier = Modifier.padding(vertical = 12.dp),
+                color = Color(0xFFEBEBEB)
             )
 
             // --- Hora y total ---
@@ -280,20 +266,18 @@ fun ActivePedidoCard(
                         color = TregoOrange
                     )
                 }
-
             }
 
-            // --- Botón de cancelar (si se provee) ---
+            // --- Botón cancelar ---
             if (order.pedido.estado == EnumEstadoPedido.Pagado) {
                 Spacer(modifier = Modifier.height(12.dp))
-                OutlinedButton(
+                Button(
                     onClick = onCancelClick,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(50),
-                    border = BorderStroke(1.dp, onCancelar),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = onCancelar,
-                        containerColor = ContainerButon
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1A1A1A),
+                        contentColor = Color.White
                     )
                 ) {
                     Icon(
@@ -310,9 +294,12 @@ fun ActivePedidoCard(
                 }
             }
 
+            // --- Sección de reclamo ---
             if (puedeReclamar) {
-                HorizontalDivider(color = Color(0xFFF0F0F0))
-
+                HorizontalDivider(
+                    modifier = Modifier.padding(top = 10.dp),
+                    color = Color(0xFFEBEBEB)
+                )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -346,7 +333,6 @@ fun ActivePedidoCard(
                     )
                 }
 
-                // --- Formulario expandible ---
                 AnimatedVisibility(
                     visible = reclamar,
                     enter = expandVertically() + fadeIn(initialAlpha = 0.3f),
@@ -443,9 +429,9 @@ fun ActivePedidoCard(
                     }
                 }
             }
-
         }
     }
+
     if (mostrarConfirmarCancelReclamo) {
         ConfirmDialogComponent(
             title = "Cancelar Reclamo",
@@ -459,5 +445,91 @@ fun ActivePedidoCard(
             },
             onDismiss = { mostrarConfirmarCancelReclamo = false }
         )
+    }
+}
+
+@Composable
+private fun OrderProgressStepper(currentStep: Int) {
+    val steps = listOf("Pagado", "Aprobado", "En camino", "Entregado")
+    val dotSize = 16.dp
+    val trackColor = Color(0xFFE2E2E2)
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(dotSize)
+        ) {
+            // Línea de track y progreso dibujadas con Canvas para precisión al píxel
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val dotRadius = dotSize.toPx() / 2f
+                val stepWidth = (size.width - 2f * dotRadius) / (steps.size - 1)
+                val y = size.height / 2f
+
+                // Track completo
+                drawLine(
+                    color = trackColor,
+                    start = Offset(dotRadius, y),
+                    end = Offset(size.width - dotRadius, y),
+                    strokeWidth = 2.dp.toPx()
+                )
+
+                // Progreso hasta el paso actual
+                if (currentStep > 0) {
+                    drawLine(
+                        color = TregoOrange,
+                        start = Offset(dotRadius, y),
+                        end = Offset(dotRadius + stepWidth * currentStep, y),
+                        strokeWidth = 2.dp.toPx()
+                    )
+                }
+            }
+
+            // Dots encima del Canvas, alineados con SpaceBetween
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                steps.forEachIndexed { index, _ ->
+                    Box(
+                        modifier = Modifier
+                            .size(dotSize)
+                            .clip(CircleShape)
+                            .background(if (index <= currentStep) TregoOrange else trackColor),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (index < currentStep) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(10.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Labels debajo de los dots
+        Row(modifier = Modifier.fillMaxWidth()) {
+            steps.forEachIndexed { index, label ->
+                Text(
+                    text = label,
+                    fontSize = 9.sp,
+                    fontWeight = if (index == currentStep) FontWeight.Bold else FontWeight.Normal,
+                    color = if (index <= currentStep) TregoOrange else Color(0xFFBBBBBB),
+                    textAlign = when (index) {
+                        0 -> TextAlign.Start
+                        steps.size - 1 -> TextAlign.End
+                        else -> TextAlign.Center
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
     }
 }

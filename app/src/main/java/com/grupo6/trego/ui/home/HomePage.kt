@@ -1,5 +1,11 @@
 package com.grupo6.trego.ui.home
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -16,9 +22,11 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -27,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -37,36 +46,35 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.grupo6.trego.data.model.DTODireccion
 import com.grupo6.trego.data.model.DTOSubCategoria
 import com.grupo6.trego.data.utilities.AppReadyState
 import com.grupo6.trego.data.utilities.LocationState
 import com.grupo6.trego.data.utilities.RequestLocation
+import com.grupo6.trego.ui.carrito.componentes.DireccionSelectorModal
 import com.grupo6.trego.ui.componentes.TregoHeader
 import com.grupo6.trego.ui.home.ofertas.OfertaScreen
 import com.grupo6.trego.ui.home.platos.PlatoListScreen
 import com.grupo6.trego.ui.home.platos.SubCategoriaListScreen
 import com.grupo6.trego.ui.home.restaurantes.RestaurantListScreen
 import org.koin.androidx.compose.koinViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.grupo6.trego.ui.carrito.componentes.DireccionSelectorModal
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomePage(navController: NavController) {
     val viewModel: HomeViewModel = koinViewModel()
     val pagerState = rememberPagerState(pageCount = { 3 })
-
+    var selectedSub by remember { mutableStateOf<DTOSubCategoria?>(null) }
     val locationState by viewModel.locationState.collectAsState()
     var locationRetryKey by remember { mutableStateOf(0) }
-
     val currentAddress by viewModel.currentAddress.collectAsState()
     val isFetchingAddress by viewModel.isFetchingAddress.collectAsState()
-
     var mostrarSelectorDireccion by remember { mutableStateOf(false) }
     val estadoDirecciones by viewModel.direccionesState.collectAsStateWithLifecycle()
-    val direccionesList = (estadoDirecciones as? HomeDireccionesState.Cargadas)?.items ?: emptyList()
+    val direccionesList =
+        (estadoDirecciones as? HomeDireccionesState.Cargadas)?.items ?: emptyList()
 
     LaunchedEffect(mostrarSelectorDireccion) {
         if (mostrarSelectorDireccion) {
@@ -77,7 +85,11 @@ fun HomePage(navController: NavController) {
     // Componente centralizado de localización
     RequestLocation(retryKey = locationRetryKey) { state ->
         when (state) {
-            is LocationState.Available -> viewModel.onLocationAvailable(state.lat, state.lon)
+            is LocationState.Available -> {
+                viewModel.onLocationAvailable(state.lat, state.lon)
+                AppReadyState.setDataReady(true)
+            }
+
             LocationState.LocationUnavailable -> {
                 viewModel.onLocationUnavailable()
                 AppReadyState.setDataReady(true)
@@ -90,7 +102,6 @@ fun HomePage(navController: NavController) {
 
             LocationState.RequestingPermission -> {
                 viewModel.onRequestingPermission()
-                // Liberamos el splash para que el usuario pueda ver el diálogo de permisos
                 AppReadyState.setDataReady(true)
             }
 
@@ -104,6 +115,25 @@ fun HomePage(navController: NavController) {
                 TregoHeader(
                     title = "TREGO",
                     modifier = Modifier.padding(bottom = 0.dp),
+                    navigationIcon = if (pagerState.currentPage == 1 && selectedSub != null) {
+                        {
+                            IconButton(
+                                onClick = { selectedSub = null }, modifier = Modifier
+                                    .size(38.dp)
+                                    .background(
+                                        color = Color.White.copy(alpha = 0.1f),
+                                        shape = CircleShape
+                                    )
+                                    .clip(CircleShape)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.ArrowBackIosNew,
+                                    tint = Color.White,
+                                    contentDescription = "Volver a subcategorías"
+                                )
+                            }
+                        }
+                    } else null,
                     bottomContent = {
                         TextButton(
                             onClick = { mostrarSelectorDireccion = true }
@@ -162,46 +192,66 @@ fun HomePage(navController: NavController) {
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
-                    .weight(1f)
+                    .weight(1f),
+                beyondViewportPageCount = 2
             ) { page ->
-                when (page) {
-                    0 -> RestaurantListScreen(
-                        locationState = locationState,
-                        onRetryLocation = { locationRetryKey++ },
-                        onRestaurantClick = { id -> navController.navigate("menu/$id") }
-                    )
-
-                    1 -> {
-                        var selectedSub by remember { mutableStateOf<DTOSubCategoria?>(null) }
-
-                        if (selectedSub == null) {
-                            SubCategoriaListScreen(
-                                onSubCategoriaClick = { selectedSub = it }
-                            )
-                        } else {
-                            PlatoListScreen(
-                                subCategoria = selectedSub!!,
-                                direccion = currentAddress ?: DTODireccion(),
-                                navController = navController,
-                                onBack = { selectedSub = null }
-                            )
-                        }
-                    }
-
-                    2 -> {
-                        val dir = if (locationState is LocationState.Available) {
-                            val available = locationState as LocationState.Available
-                            DTODireccion(
-                                latitud = available.lat,
-                                longitud = available.lon
-                            )
-                        } else {
-                            DTODireccion()
-                        }
-                        OfertaScreen(
-                            direccion = dir,
-                            navController = navController,
+                key(page) {
+                    when (page) {
+                        0 -> RestaurantListScreen(
+                            locationState = locationState,
+                            currentAddress = currentAddress,
+                            onRetryLocation = {
+                                viewModel.resetLocationInitialization()
+                                locationRetryKey++
+                            },
+                            onRestaurantClick = { id -> navController.navigate("menu/$id") }
                         )
+
+                        1 -> {
+                            AnimatedContent(
+                                targetState = selectedSub,
+                                transitionSpec = {
+                                    if (targetState != null) {
+                                        (slideInHorizontally { width -> width } + fadeIn())
+                                            .togetherWith(slideOutHorizontally { width -> -width } + fadeOut())
+                                    } else {
+                                        (slideInHorizontally { width -> -width } + fadeIn())
+                                            .togetherWith(slideOutHorizontally { width -> width } + fadeOut())
+                                    }
+                                },
+                                label = "SubCategoriaAPlatosTransition"
+                            ) { sub ->
+                                if (sub == null) {
+                                    SubCategoriaListScreen(
+                                        onSubCategoriaClick = { selectedSub = it }
+                                    )
+                                } else {
+                                    PlatoListScreen(
+                                        subCategoria = sub,
+                                        direccion = currentAddress ?: DTODireccion(),
+                                        navController = navController,
+                                        onBack = { selectedSub = null }
+                                    )
+                                }
+                            }
+                        }
+
+                        2 -> {
+                            val dir =
+                                currentAddress ?: if (locationState is LocationState.Available) {
+                                    val available = locationState as LocationState.Available
+                                    DTODireccion(
+                                        latitud = available.lat,
+                                        longitud = available.lon
+                                    )
+                                } else {
+                                    DTODireccion()
+                                }
+                            OfertaScreen(
+                                direccion = dir,
+                                navController = navController,
+                            )
+                        }
                     }
                 }
             }
@@ -230,5 +280,6 @@ fun HomePage(navController: NavController) {
                 }
             }
         }
+
     }
 }

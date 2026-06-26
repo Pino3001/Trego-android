@@ -9,6 +9,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.grupo6.trego.data.model.EnumCategoriaProducto
+import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -21,7 +22,7 @@ fun CategoryFilterBottomSheet(
     var tempSelectedCategory by remember { mutableStateOf(selectedCategory) }
     val categorias = EnumCategoriaProducto.entries
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = BlancoCard) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Filtrar por Categoría", fontWeight = FontWeight.Bold, fontSize = 18.sp)
             Spacer(Modifier.height(16.dp))

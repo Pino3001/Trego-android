@@ -27,48 +27,74 @@ class HomeViewModel(
     val locationState: StateFlow<LocationState> = _locationState.asStateFlow()
 
     private val _currentLocation = MutableStateFlow<Pair<Double, Double>?>(null)
-    val currentLocation: StateFlow<Pair<Double, Double>?> = _currentLocation.asStateFlow()
 
     val currentAddress: StateFlow<DTODireccion?> = locationRepository.currentAddress
 
     private val _isFetchingAddress = MutableStateFlow(false)
     val isFetchingAddress: StateFlow<Boolean> = _isFetchingAddress.asStateFlow()
 
-    private val _direccionesState = MutableStateFlow<HomeDireccionesState>(HomeDireccionesState.Cargando)
+    private val _direccionesState =
+        MutableStateFlow<HomeDireccionesState>(HomeDireccionesState.Cargando)
     val direccionesState: StateFlow<HomeDireccionesState> = _direccionesState.asStateFlow()
+    private var isLocationInitialized = false
+
+    fun resetLocationInitialization() {
+        isLocationInitialized = false
+        _locationState.value = LocationState.Idle
+    }
 
     fun setManualAddress(direccion: DTODireccion) {
-        locationRepository.updateAddress(direccion)
+        isLocationInitialized = true
+        locationRepository.updateAddress(direccion, manual = true)
         _locationState.value = LocationState.Available(direccion.latitud, direccion.longitud)
         _currentLocation.value = Pair(direccion.latitud, direccion.longitud)
     }
 
     fun cargarDirecciones() {
+        // OPTIMIZACIÓN: No recargar si ya tenemos datos, a menos que sea necesario
+        if (_direccionesState.value is HomeDireccionesState.Cargadas) return
+
         viewModelScope.launch {
             _direccionesState.value = HomeDireccionesState.Cargando
-            val result = usuarioRepository.obtenerDirecciones()
-            if (result.isSuccess) {
-                val direcciones = result.getOrNull() ?: emptyList()
-                _direccionesState.value = HomeDireccionesState.Cargadas(direcciones)
-            } else {
-                val error = result.exceptionOrNull()
-                _direccionesState.value =
-                    HomeDireccionesState.Error(error?.message ?: "Error desconocido")
-            }
+            usuarioRepository.obtenerDirecciones()
+                .onSuccess { direcciones ->
+                    _direccionesState.value =
+                        HomeDireccionesState.Cargadas(direcciones ?: emptyList())
+                }
+                .onFailure { e ->
+                    _direccionesState.value =
+                        HomeDireccionesState.Error(e.message ?: "Error desconocido")
+                }
         }
     }
 
-    /**
-     * Llamar cuando se obtienen coordenadas válidas desde [RequestLocation].
-     */
     fun onLocationAvailable(lat: Double, lon: Double) {
+        if (isLocationInitialized) return
+
+        isLocationInitialized = true
         _locationState.value = LocationState.Available(lat, lon)
         _currentLocation.value = Pair(lat, lon)
+
+        // OPTIMIZACIÓN: Solo geocodificar si no es manual
+        if (!locationRepository.isManual.value) {
+            fetchReverseGeocode(lat, lon)
+        }
+    }
+
+    private fun fetchReverseGeocode(lat: Double, lon: Double) {
+        // Aseguramos que no se lancen múltiples peticiones
+        if (_isFetchingAddress.value) return
+
         viewModelScope.launch {
             _isFetchingAddress.value = true
-            val address = reverseGeocode(lat, lon)
-            locationRepository.updateAddress(address)
-            _isFetchingAddress.value = false
+            try {
+                val address = reverseGeocode(lat, lon)
+                if (address != null) {
+                    locationRepository.updateAddress(address, manual = false)
+                }
+            } finally {
+                _isFetchingAddress.value = false
+            }
         }
     }
 

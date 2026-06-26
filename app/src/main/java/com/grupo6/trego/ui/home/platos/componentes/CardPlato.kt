@@ -39,10 +39,10 @@ import coil.compose.AsyncImage
 import com.grupo6.trego.data.model.DTODireccion
 import com.grupo6.trego.data.model.DTOProducto
 import com.grupo6.trego.data.model.DTOProductoZona
+import com.grupo6.trego.data.utilities.ensureCloudinaryTransformation
 import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.ComboGreenDark
 import com.grupo6.trego.ui.theme.PurpleGrey40
-import com.grupo6.trego.ui.theme.TregoOrange
 
 private val AmberStar = Color(0xFFEF9F27)
 
@@ -82,11 +82,11 @@ fun CardPlato(
             ) {
                 // Imagen
                 AsyncImage(
-                    model = imagenUrl,
+                    model = imagenUrl?.ensureCloudinaryTransformation("w_200,h_200,c_fill,g_auto"),
                     contentDescription = nombre,
                     modifier = Modifier
                         .fillMaxSize(),
-                    contentScale = ContentScale.Fit,
+                    contentScale = ContentScale.Crop,
                     alignment = Alignment.Center,
                     placeholder = placeholder,
                     error = placeholder,

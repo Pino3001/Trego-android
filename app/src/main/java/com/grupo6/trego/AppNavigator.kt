@@ -47,10 +47,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun AppNavigation(pendingPaymentStatus: MutableStateFlow<String?> = MutableStateFlow(null)) {
+fun AppNavigation(
+    pendingPaymentStatus: MutableStateFlow<String?> = MutableStateFlow(null),
+    navigateToOrders: MutableStateFlow<Boolean> = MutableStateFlow(false)
+) {
     val activity = LocalContext.current as ComponentActivity
     val navController = rememberNavController()
     val auth = Firebase.auth
+    val debaIrAPedidos by navigateToOrders.collectAsState()
 
     var user by remember { mutableStateOf(auth.currentUser) }
 
@@ -62,6 +66,15 @@ fun AppNavigation(pendingPaymentStatus: MutableStateFlow<String?> = MutableState
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: ""
+
+    LaunchedEffect(debaIrAPedidos) {
+        if (debaIrAPedidos == true) {
+            navController.navigate("pedido") {
+                launchSingleTop = true
+            }
+            navigateToOrders.value = false
+        }
+    }
 
     // Cambiar dinámicamente el color de la barra de estado según la pantalla actual
     val view = LocalView.current
@@ -128,76 +141,76 @@ fun AppNavigation(pendingPaymentStatus: MutableStateFlow<String?> = MutableState
             startDestination = if (user == null) "login" else "restaurants",
             modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
         ) {
-                composable("login") {
-                    FormInicio(
-                        onLoginSuccess = { /* Autogestionado por listener */ },
-                        onNavigateToPhone = { navController.navigate("phone_auth") },
-                        viewModel = koinViewModel()
-                    )
-                }
-                composable("phone_auth") { PhoneAuthScreen(onAuthSuccess = { }) }
+            composable("login") {
+                FormInicio(
+                    onLoginSuccess = { /* Autogestionado por listener */ },
+                    onNavigateToPhone = { navController.navigate("phone_auth") },
+                    viewModel = koinViewModel()
+                )
+            }
+            composable("phone_auth") { PhoneAuthScreen(onAuthSuccess = { }) }
 
-                composable("restaurants") {
-                    if (user == null) {
-                        LaunchedEffect(Unit) { navController.navigate("login") { popUpTo(0) } }
-                    } else {
-                        HomePage(
-                            navController = navController
-                        )
-                    }
-                }
-
-                composable(
-                    route = "menu/{restauranteId}",
-                    arguments = listOf(navArgument("restauranteId") { type = NavType.LongType })
-                ) { backStackEntry ->
-                    if (user == null) {
-                        LaunchedEffect(Unit) { navController.navigate("login") { popUpTo(0) } }
-                    } else {
-                        val restauranteId = backStackEntry.arguments?.getLong("restauranteId") ?: 0L
-                        MenuScreen(restauranteId = restauranteId, navController = navController)
-                    }
-                }
-
-                //  RUTA CARRITO CON DEEP LINK PARA MERCADO PAGO
-                composable(
-                    route = "carrito?status={status}",
-                    arguments = listOf(navArgument("status") { nullable = true }),
-                    deepLinks = listOf(navDeepLink { uriPattern = "trego://pago/{status}" })
-                ) { backStackEntry ->
-                    val status = backStackEntry.arguments?.getString("status")
-                    Log.d("DeepLink", "CarritoScreen composable: status=$status")
-                    if (user == null) {
-                        LaunchedEffect(Unit) { navController.navigate("login") { popUpTo(0) } }
-                    } else {
-                        CarritoScreen(navController = navController, statusDePago = status)
-                    }
-                }
-
-                composable("pedido") {
-                    if (user == null) {
-                        LaunchedEffect(Unit) { navController.navigate("login") { popUpTo(0) } }
-                    } else {
-                        PedidoScreen(navController = navController)
-                    }
-                }
-
-                composable("profile") {
-                    if (user == null) {
-                        LaunchedEffect(Unit) { navController.navigate("login") { popUpTo(0) } }
-                    } else {
-                        PerfilScreen(onLogout = { auth.signOut() })
-                    }
-                }
-
-                composable("historial") {
-                    HistorialScreen(
-                        viewModel = pedidoViewModel, // Pásale tu viewmodel inyectado
+            composable("restaurants") {
+                if (user == null) {
+                    LaunchedEffect(Unit) { navController.navigate("login") { popUpTo(0) } }
+                } else {
+                    HomePage(
                         navController = navController
                     )
                 }
             }
+
+            composable(
+                route = "menu/{restauranteId}",
+                arguments = listOf(navArgument("restauranteId") { type = NavType.LongType })
+            ) { backStackEntry ->
+                if (user == null) {
+                    LaunchedEffect(Unit) { navController.navigate("login") { popUpTo(0) } }
+                } else {
+                    val restauranteId = backStackEntry.arguments?.getLong("restauranteId") ?: 0L
+                    MenuScreen(restauranteId = restauranteId, navController = navController)
+                }
+            }
+
+            //  RUTA CARRITO CON DEEP LINK PARA MERCADO PAGO
+            composable(
+                route = "carrito?status={status}",
+                arguments = listOf(navArgument("status") { nullable = true }),
+                deepLinks = listOf(navDeepLink { uriPattern = "trego://pago/{status}" })
+            ) { backStackEntry ->
+                val status = backStackEntry.arguments?.getString("status")
+                Log.d("DeepLink", "CarritoScreen composable: status=$status")
+                if (user == null) {
+                    LaunchedEffect(Unit) { navController.navigate("login") { popUpTo(0) } }
+                } else {
+                    CarritoScreen(navController = navController, statusDePago = status)
+                }
+            }
+
+            composable("pedido") {
+                if (user == null) {
+                    LaunchedEffect(Unit) { navController.navigate("login") { popUpTo(0) } }
+                } else {
+                    PedidoScreen(navController = navController)
+                }
+            }
+
+            composable("profile") {
+                if (user == null) {
+                    LaunchedEffect(Unit) { navController.navigate("login") { popUpTo(0) } }
+                } else {
+                    PerfilScreen(onLogout = { auth.signOut() })
+                }
+            }
+
+            composable("historial") {
+                HistorialScreen(
+                    viewModel = pedidoViewModel, // Pásale tu viewmodel inyectado
+                    navController = navController
+                )
+            }
         }
+    }
 }
 
 

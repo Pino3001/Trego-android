@@ -202,15 +202,6 @@ fun PerfilScreen(
         }
     }
 
-    if (state is PerfilUiState.Error) {
-        DialogComponent(
-            message = (state as PerfilUiState.Error).message,
-            onDismiss = {
-                perfilView.descartarError()
-            }
-        )
-    }
-
     Scaffold(
         containerColor = Color.White,
         snackbarHost = {

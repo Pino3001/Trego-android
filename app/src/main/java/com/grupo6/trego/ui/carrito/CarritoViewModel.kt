@@ -30,6 +30,7 @@ sealed class CarritoUiState {
     object RestauranteCerrado : CarritoUiState()
     object PagoExitoso : CarritoUiState()
     object PagoRechazado : CarritoUiState()
+    data class Error(val message: String) : CarritoUiState()
     data class Cargado(val items: List<DTOProductoPedido>) : CarritoUiState()
     data class PagoPendiente(val preferencia: DTOPreferenciaMP) : CarritoUiState()
     data class AbrirMercadoPago(val url: String) : CarritoUiState()
@@ -112,10 +113,14 @@ class CarritoViewModel(
                         restauranteId = carrito.idRestaurante
                     } else {
                         total = 0.0
+                        restauranteId = null
+                        nombreRestaurante = ""
                     }
                     actualizarEstado()
                 }
                 .onFailure { e ->
+                    uiState =
+                        CarritoUiState.Error("No se pudo conectar con el servidor. Verifica tu conexión.")
                     emitirError("Error al cargar carrito")
                 }
         }
@@ -130,7 +135,8 @@ class CarritoViewModel(
                 _direccionesState.value = DireccionesState.Cargadas(direcciones)
             } else {
                 val error = result.exceptionOrNull()
-                _direccionesState.value = DireccionesState.Error(error?.message ?: "Error desconocido")
+                _direccionesState.value =
+                    DireccionesState.Error(error?.message ?: "Error desconocido")
             }
         }
     }
@@ -138,7 +144,8 @@ class CarritoViewModel(
     // Compara si dos items son la misma combinación exacta, sin importar su idLinea
     private fun sonMismaCombinacion(item1: DTOProductoPedido, item2: DTOProductoPedido): Boolean {
         val mismoId = item1.producto?.idProducto == item2.producto?.idProducto
-        val mismosIngredientes = item1.ingredientesAQuitar?.toSet() == item2.ingredientesAQuitar?.toSet()
+        val mismosIngredientes =
+            item1.ingredientesAQuitar?.toSet() == item2.ingredientesAQuitar?.toSet()
         return mismoId && mismosIngredientes
     }
 
@@ -159,11 +166,15 @@ class CarritoViewModel(
                             // 2. LIMPIEZA EXTRA: Por si acaso, borramos cualquier OTRA línea en pantalla
                             // que comparta la misma combinación exacta pero con distinto ID.
                             _items.removeAll {
-                                it.idLinea != lineaActualizada.idLinea && sonMismaCombinacion(it, lineaActualizada)
+                                it.idLinea != lineaActualizada.idLinea && sonMismaCombinacion(
+                                    it,
+                                    lineaActualizada
+                                )
                             }
 
                             // 3. Actualizamos la línea unificada con los datos correctos
-                            val index = _items.indexOfFirst { it.idLinea == lineaActualizada.idLinea }
+                            val index =
+                                _items.indexOfFirst { it.idLinea == lineaActualizada.idLinea }
                             if (index >= 0) {
                                 _items[index] = lineaActualizada
                             } else {
@@ -192,15 +203,15 @@ class CarritoViewModel(
         val itemExistente = _items.firstOrNull { sonMismaCombinacion(it, itemNuevo) }
 
         if (itemExistente != null) {
-            // Ya existe esta combinación. Le sumamos cantidad a esa línea usando SU idLinea.
             val nuevaCantidad = (itemExistente.cantidad ?: 0) + (itemNuevo.cantidad ?: 1)
-            val precioUnitario = (itemExistente.producto?.calcularPrecioConDescuento()?.toFloat()) ?: 0f
+            val precioUnitario =
+                (itemExistente.producto?.calcularPrecioConDescuento()?.toFloat()) ?: 0f
 
-            // Gracias al método .copy() de las data classes, esto es súper limpio
             val requestModificacion = itemExistente.copy(
                 cantidad = nuevaCantidad,
                 subtotal = precioUnitario * nuevaCantidad,
-                observaciones = itemNuevo.observaciones ?: itemExistente.observaciones // Mantiene observaciones
+                observaciones = itemNuevo.observaciones
+                    ?: itemExistente.observaciones // Mantiene observaciones
             )
 
             repository.modificarProducto(requestModificacion)
@@ -298,6 +309,8 @@ class CarritoViewModel(
                 .onSuccess {
                     _items.clear()
                     total = 0.0
+                    restauranteId = null
+                    nombreRestaurante = ""
                     uiState = CarritoUiState.Vacio
                 }
                 .onFailure {
@@ -394,6 +407,7 @@ class CarritoViewModel(
                 }
                 .onFailure { e ->
                     emitirError("Error al confirmar pedido")
+                    actualizarEstado() // Vuelve a mostrar el carrito cargado para reintentar
                 }
         }
     }
@@ -411,6 +425,8 @@ class CarritoViewModel(
         _items.clear()
         total = 0.0
         carritoActual = null
+        restauranteId = null
+        nombreRestaurante = ""
         uiState = CarritoUiState.PagoExitoso
     }
 

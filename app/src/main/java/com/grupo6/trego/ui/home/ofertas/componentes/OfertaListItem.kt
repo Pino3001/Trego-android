@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.grupo6.trego.data.model.DTOProductoZona
+import com.grupo6.trego.data.utilities.ensureCloudinaryTransformation
 import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.ComboGreenDark
 import com.grupo6.trego.ui.theme.PurpleGrey40
@@ -76,17 +77,16 @@ fun OfertaListItem(
             ) {
                 // Imagen
                 AsyncImage(
-                    model = imagenUrl,
+                    model = imagenUrl?.ensureCloudinaryTransformation("w_150,h_150,c_fill,g_auto"),
                     contentDescription = nombre,
                     modifier = Modifier
                         .fillMaxSize(),
-                    contentScale = ContentScale.Fit,
+                    contentScale = ContentScale.Crop,
                     alignment = Alignment.Center,
                     placeholder = placeholder,
                     error = placeholder,
                 )
 
-                // Precio flotante (Esquina inferior derecha)
                 Surface(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -97,6 +97,22 @@ fun OfertaListItem(
                     Text(
                         text = "${producto.oferta?.descuento?.toInt()}% off",
                         style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = BlancoCard,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(8.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = ComboGreenDark.copy(alpha = 0.9f), // Un poco de transparencia queda bien
+                ) {
+                    Text(
+                        text = "\$${precio.toInt()}",
+                        style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         color = BlancoCard,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -121,13 +137,6 @@ fun OfertaListItem(
                         text = nombre,
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = " $${precio.toInt()}",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = ComboGreenDark,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

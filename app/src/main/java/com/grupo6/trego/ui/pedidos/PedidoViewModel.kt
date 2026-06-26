@@ -106,6 +106,15 @@ class PedidoViewModel(
                         }.awaitAll().toMap()
                     }
 
+                    // 🚨 LOGS DE DEBUGGING:
+                    Log.d("TREGO_DEBUG", "--- NUEVA CARGA DE PEDIDOS ---")
+                    todosLosPedidos.forEach { pedido ->
+                        Log.d("TREGO_DEBUG", "Pedido ID: ${pedido.idPedido} | ID Restaurante que viene del Backend: ${pedido.idRestaurante}")
+                    }
+                    restaurantesMap.forEach { (id, restaurante) ->
+                        Log.d("TREGO_DEBUG", "Mapa de la app -> ID Consultado: $id asignado a Nombre: ${restaurante?.nombre}")
+                    }
+
                     val pedidosConRestaurante = todosLosPedidos.map { pedido ->
                         val restaurante = restaurantesMap[pedido.idRestaurante?.toLong()]
                         PedidoUiModel(

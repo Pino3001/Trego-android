@@ -12,11 +12,13 @@ import com.grupo6.trego.data.model.DTODireccion
 import com.grupo6.trego.data.model.DTORestaurante
 import com.grupo6.trego.data.model.EnumCategoriaRestaurante
 import com.grupo6.trego.data.repository.RestauranteRepository
+import com.grupo6.trego.data.utilities.AppReadyState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
@@ -33,9 +35,6 @@ data class FilterState(
     val horaHasta: LocalTime? = null
 )
 
-/**
- * Estado de la pantalla para búsquedas por nombre (no aplica a la lista paginada).
- */
 sealed class SearchUiState {
     object Idle : SearchUiState()
     object Loading : SearchUiState()
@@ -51,6 +50,7 @@ sealed class AddressSearchUiState {
     data class Success(val restaurants: List<DTORestaurante>) : AddressSearchUiState()
     data class Error(val message: String) : AddressSearchUiState()
 }
+
 // ---------------------------------------------------------------------------
 // ViewModel
 // ---------------------------------------------------------------------------
@@ -81,9 +81,11 @@ class RestauranteViewModel(
     var addressSearchUiState by mutableStateOf<AddressSearchUiState>(AddressSearchUiState.Idle)
         private set
 
-    // NUEVO: flag para saber si estamos mostrando resultados de dirección (opcional)
     var isAddressSearchMode by mutableStateOf(false)
         private set
+
+    // OPTIMIZACIÓN: Guardamos en memoria la última dirección consultada al backend
+    private var lastSearchedAddress: DTODireccion? = null
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
@@ -95,6 +97,7 @@ class RestauranteViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     val restaurantsFlow: Flow<PagingData<DTORestaurante>> = _currentLocation
         .filterNotNull()
+        .distinctUntilChanged() // OPTIMIZACIÓN: Solo reacciona si el par de coordenadas cambia
         .flatMapLatest { (lat, lon) ->
             Pager(
                 config = PagingConfig(
@@ -108,33 +111,56 @@ class RestauranteViewModel(
 
     fun refresh() {
         if (isSearchMode) {
-            onSearchSubmit()
+            onSearchSubmit(isForceRefresh = true)
         } else if (isAddressSearchMode) {
             _currentLocation.value?.let { (lat, lon) ->
-                searchRestaurantsByAddress(DTODireccion(latitud = lat, longitud = lon))
+                searchRestaurantsByAddress(
+                    direccion = DTODireccion(latitud = lat, longitud = lon),
+                    isForceRefresh = true
+                )
             }
         }
     }
 
     /**
      * Llama al repositorio para obtener restaurantes que cubren la dirección dada.
-     * @param direccion Objeto DTODireccion creado desde la UI (ej. con geocodificación o entrada manual)
+     * @param direccion Objeto DTODireccion creado desde la UI
+     * @param isForceRefresh Obliga a hacer la petición al servidor ignorando la caché de memoria
      */
-    fun searchRestaurantsByAddress(direccion: DTODireccion) {
+    fun searchRestaurantsByAddress(direccion: DTODireccion, isForceRefresh: Boolean = false) {
+        // OPTIMIZACIÓN: Si NO es un refresh forzado, ya consultamos esta misma dirección y tenemos éxito, cortamos acá.
+        if (!isForceRefresh && lastSearchedAddress == direccion && addressSearchUiState is AddressSearchUiState.Success) {
+            isAddressSearchMode = true
+            return
+        }
+
         isAddressSearchMode = true
+        lastSearchedAddress = direccion
+
         viewModelScope.launch {
             _isRefreshing.value = true
-            addressSearchUiState = AddressSearchUiState.Loading
+
+            // EVITA EL PARPADEO: Solo pasamos a Loading si no estamos recargando la vista actual
+            if (!isForceRefresh) {
+                addressSearchUiState = AddressSearchUiState.Loading
+            }
+
             try {
                 repository.getRestaurantsByAddress(direccion)
                     .onSuccess { list ->
-                        rawAddressResults = list
+                        rawAddressResults = list ?: emptyList()
                         applyFiltersToStates()
+                        AppReadyState.setDataReady(true)
                     }
                     .onFailure { e ->
                         addressSearchUiState =
                             AddressSearchUiState.Error(e.message ?: "Error al buscar por dirección")
+                        AppReadyState.setDataReady(true)
                     }
+            } catch (e: Exception) {
+                addressSearchUiState =
+                    AddressSearchUiState.Error("Fallo de conexión o respuesta vacía")
+                AppReadyState.setDataReady(true)
             } finally {
                 _isRefreshing.value = false
             }
@@ -142,47 +168,61 @@ class RestauranteViewModel(
     }
 
     /**
-     * Limpia los resultados de búsqueda por dirección y vuelve al modo normal (lista paginada por ubicación).
+     * @param isForceRefresh Obliga a hacer la petición al servidor manteniendo la lista actual visible mientras carga
      */
+    fun onSearchSubmit(isForceRefresh: Boolean = false) {
+        if (searchQuery.isBlank()) return
+        isSearchMode = true
+        viewModelScope.launch {
+            _isRefreshing.value = true
+
+            // EVITA EL PARPADEO: Solo pasamos a Loading si no estamos recargando la vista actual
+            if (!isForceRefresh) {
+                searchUiState = SearchUiState.Loading
+            }
+
+            try {
+                repository.searchRestaurantsByName(searchQuery)
+                    .onSuccess { list ->
+                        rawSearchResults = list ?: emptyList()
+                        applyFiltersToStates()
+                        AppReadyState.setDataReady(true)
+                    }
+                    .onFailure { e ->
+                        searchUiState = SearchUiState.Error(e.message ?: "Error desconocido")
+                        AppReadyState.setDataReady(true)
+                    }
+            } catch (e: Exception) {
+                searchUiState = SearchUiState.Error("No se pudo completar la búsqueda")
+                AppReadyState.setDataReady(true)
+            } finally {
+                _isRefreshing.value = false
+            }
+        }
+    }
+
     fun clearAddressSearch() {
         isAddressSearchMode = false
         addressSearchUiState = AddressSearchUiState.Idle
         rawAddressResults = emptyList()
+        lastSearchedAddress = null // Limpiamos la caché
     }
-
 
     /**
      * Llamar para actualizar la ubicación interna y disparar la paginación.
      */
     fun updateLocation(lat: Double, lon: Double) {
-        _currentLocation.value = Pair(lat, lon)
+        val newLocation = Pair(lat, lon)
+        // OPTIMIZACIÓN: Evita reasignar el valor y disparar corrutinas si las coordenadas son idénticas
+        if (_currentLocation.value != newLocation) {
+            _currentLocation.value = newLocation
+        }
     }
 
-// --- Búsqueda por nombre ---
+    // --- Búsqueda por nombre ---
 
     fun onSearchQueryChange(query: String) {
         searchQuery = query
-    }
-
-    fun onSearchSubmit() {
-        if (searchQuery.isBlank()) return
-        isSearchMode = true
-        viewModelScope.launch {
-            _isRefreshing.value = true
-            searchUiState = SearchUiState.Loading
-            try {
-                repository.searchRestaurantsByName(searchQuery)
-                    .onSuccess { list ->
-                        rawSearchResults = list
-                        applyFiltersToStates()
-                    }
-                    .onFailure { e ->
-                        searchUiState = SearchUiState.Error(e.message ?: "Error desconocido")
-                    }
-            } finally {
-                _isRefreshing.value = false
-            }
-        }
     }
 
     fun onClearSearch() {
@@ -192,7 +232,7 @@ class RestauranteViewModel(
         rawSearchResults = emptyList()
     }
 
-// --- Filtros ---
+    // --- Filtros ---
 
     fun onApplyFilter(newFilter: FilterState) {
         filterState = newFilter
@@ -237,8 +277,6 @@ class RestauranteViewModel(
 
 /**
  * Verifica si el restaurante atiende durante el rango pedido.
- * Si el restaurante no tiene horario cargado, pasa el filtro siempre.
- * Si solo se definió un extremo del rango, el otro se completa al límite del día.
  */
 private fun matchesHorario(
     restaurante: DTORestaurante,
@@ -248,47 +286,35 @@ private fun matchesHorario(
     if (horaDesde == null && horaHasta == null) return true
 
     val apertura = restaurante.horaApertura ?: return true
-    val cierre   = restaurante.horaCierre   ?: return true
+    val cierre = restaurante.horaCierre ?: return true
 
     val desdeMin = horaDesde?.let { timeToMinutes(it) } ?: 0
     val hastaMin = horaHasta?.let { timeToMinutes(it) } ?: 1439   // 23:59
 
     return rangesOverlap(
         start1 = timeToMinutes(apertura),
-        end1   = timeToMinutes(cierre),
+        end1 = timeToMinutes(cierre),
         start2 = desdeMin,
-        end2   = hastaMin
+        end2 = hastaMin
     )
 }
 
 private fun timeToMinutes(time: LocalTime): Int = time.hour * 60 + time.minute
 
-/**
- * Detecta solapamiento entre dos rangos horarios contemplando cruces de medianoche.
- * Un rango cruza medianoche cuando end < start (ej: apertura 22:00, cierre 04:00).
- *
- * Casos:
- *  Ninguno cruza → overlap clásico
- *  Solo restaurante cruza → está abierto [start1..23:59] ∪ [00:00..end1]
- *  Solo filtro cruza     → el usuario busca [start2..23:59] ∪ [00:00..end2]
- *  Ambos cruzan          → siempre solapan (ambos cubren la madrugada)
- */
 private fun rangesOverlap(start1: Int, end1: Int, start2: Int, end2: Int): Boolean {
     val restauranteCruzaMedianoche = end1 < start1
-    val filtroCruzaMedianoche      = end2 < start2
+    val filtroCruzaMedianoche = end2 < start2
 
     return when {
         !restauranteCruzaMedianoche && !filtroCruzaMedianoche ->
             start1 <= end2 && start2 <= end1
 
         restauranteCruzaMedianoche && !filtroCruzaMedianoche ->
-            // Restaurante cubre [start1..1439] ∪ [0..end1]
             start2 <= end1 || end2 >= start1
 
         !restauranteCruzaMedianoche && filtroCruzaMedianoche ->
-            // Filtro busca [start2..1439] ∪ [0..end2]
             start1 <= end2 || end1 >= start2
 
-        else -> true // ambos cruzan medianoche → siempre hay solapamiento
+        else -> true
     }
 }

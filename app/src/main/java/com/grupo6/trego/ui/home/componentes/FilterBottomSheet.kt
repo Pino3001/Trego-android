@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
@@ -42,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import com.grupo6.trego.data.model.EnumCategoriaRestaurante
 import com.grupo6.trego.ui.componentes.StarRatingSelector
 import com.grupo6.trego.ui.home.restaurantes.FilterState
+import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -121,7 +123,7 @@ fun FilterBottomSheet(
         )
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = BlancoCard) {
         Column(
             modifier = Modifier
                 .padding(16.dp)
@@ -153,7 +155,8 @@ fun FilterBottomSheet(
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDropdown) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
+                        .menuAnchor(type = MenuAnchorType.PrimaryNotEditable),
+                    shape = RoundedCornerShape(20.dp),
                 )
 
                 ExposedDropdownMenu(
