@@ -4,7 +4,7 @@ enum class EnumEstadoPedido {
     Solicitado,
     Pagado,
     PagoRechazado,
-    Aprobado,
+    EnPreparacion,
     EnCamino,
     Entregado,
     Cancelado,

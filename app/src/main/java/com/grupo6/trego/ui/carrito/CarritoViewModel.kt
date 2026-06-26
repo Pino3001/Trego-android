@@ -236,6 +236,7 @@ class CarritoViewModel(
                     _items.clear()
                     _items.addAll(carrito.productos ?: emptyList())
                     total = carrito.total ?: 0.0
+                    restauranteId = carrito.idRestaurante
                     actualizarEstado()
                 }
                 .onFailure {
@@ -325,23 +326,29 @@ class CarritoViewModel(
         restaurante: DTORestaurante,
         abierto: Boolean
     ) {
-        if (abierto) {
-            esEdicion = false
-            nombreRestaurante = restaurante.nombre.toString()
-            productoEnModal = DTOProductoPedido(
-                idLinea = null, // Explícitamente Nulo para que el sistema sepa que es nuevo
-                producto = producto,
-                cantidad = 1,
-                observaciones = null,
-                ingredientesAQuitar = emptyList(),
-                cantidadDisponible = producto.cantidadDisponible ?: 0,
-                subtotal = producto.calcularPrecioConDescuento().toFloat()
-            )
-            showModal = true
-        } else {
-            Log.e("Boton", "se Preciono")
+        if (!abierto) {
             emitirError("El restaurante se encuentra cerrado")
+            return
         }
+
+        // Guard: carrito ocupado por otro restaurante
+        if (_items.isNotEmpty() && restauranteId != null && restauranteId?.toInt() != restaurante.idRestaurante) {
+            emitirError("Ya tenés productos de $nombreRestaurante en el carrito. Vacialo antes de pedir en otro restaurante.")
+            return
+        }
+
+        esEdicion = false
+        nombreRestaurante = restaurante.nombre.toString()
+        productoEnModal = DTOProductoPedido(
+            idLinea = null,
+            producto = producto,
+            cantidad = 1,
+            observaciones = null,
+            ingredientesAQuitar = emptyList(),
+            cantidadDisponible = producto.cantidadDisponible ?: 0,
+            subtotal = producto.calcularPrecioConDescuento().toFloat()
+        )
+        showModal = true
     }
 
     fun abrirModalEditar(item: DTOProductoPedido) {
@@ -422,12 +429,15 @@ class CarritoViewModel(
     }
 
     fun marcarPagoExitoso() {
-        _items.clear()
-        total = 0.0
-        carritoActual = null
-        restauranteId = null
-        nombreRestaurante = ""
-        uiState = CarritoUiState.PagoExitoso
+        viewModelScope.launch {
+            repository.limpiarCarrito()
+            _items.clear()
+            total = 0.0
+            carritoActual = null
+            restauranteId = null
+            nombreRestaurante = ""
+            uiState = CarritoUiState.PagoExitoso
+        }
     }
 
     fun marcarPagoRechazado() {

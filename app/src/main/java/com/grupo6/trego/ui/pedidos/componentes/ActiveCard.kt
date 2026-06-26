@@ -77,7 +77,7 @@ data class BadgeColors(
 fun getEstadoPedidoColors(estado: EnumEstadoPedido): BadgeColors = when (estado) {
     EnumEstadoPedido.Pagado -> BadgeColors(Color(0xFFE3F2FD), Color(0xFF1565C0))
     EnumEstadoPedido.PagoRechazado -> BadgeColors(Color(0xFFFFEBEE), Color(0xFFC62828))
-    EnumEstadoPedido.Aprobado -> BadgeColors(Color(0xFFE8F5E9), Color(0xFF2E7D32))
+    EnumEstadoPedido.EnPreparacion -> BadgeColors(Color(0xFFE8F5E9), Color(0xFF2E7D32))
     EnumEstadoPedido.EnCamino -> BadgeColors(Color(0xFFFFF3E0), Color(0xFFEF6C00))
     EnumEstadoPedido.Entregado -> BadgeColors(Color(0xFFE0F2F1), Color(0xFF00695C))
     EnumEstadoPedido.Cancelado -> BadgeColors(Color(0xFFF3E5F5), Color(0xFF6A1B9A))
@@ -89,7 +89,7 @@ val timeFormatter: DateTimeFormatter? = DateTimeFormatter.ofPattern("HH:mm")
 
 private val estadosPedido = listOf(
     EnumEstadoPedido.Pagado,
-    EnumEstadoPedido.Aprobado,
+    EnumEstadoPedido.EnPreparacion,
     EnumEstadoPedido.EnCamino,
     EnumEstadoPedido.Entregado
 )
@@ -104,8 +104,8 @@ fun ActivePedidoCard(
     onClickReclamo: (request: DTOCrearReclamoRequest, onSuccess: () -> Unit) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val puedeReclamar = order.pedido.estado == EnumEstadoPedido.Aprobado ||
-            order.pedido.estado == EnumEstadoPedido.EnCamino
+    val puedeReclamar = order.pedido.estado == EnumEstadoPedido.EnPreparacion ||
+            order.pedido.estado == EnumEstadoPedido.EnCamino || order.pedido.estado == EnumEstadoPedido.EnCamino
     var reclamar by remember { mutableStateOf(false) }
     var reclamoTexto by remember { mutableStateOf("") }
     var mostrarConfirmarCancelReclamo by remember { mutableStateOf(false) }
@@ -450,7 +450,7 @@ fun ActivePedidoCard(
 
 @Composable
 private fun OrderProgressStepper(currentStep: Int) {
-    val steps = listOf("Pagado", "Aprobado", "En camino", "Entregado")
+    val steps = listOf("Pagado", "En Preparacion", "En camino", "Entregado")
     val dotSize = 16.dp
     val trackColor = Color(0xFFE2E2E2)
 
