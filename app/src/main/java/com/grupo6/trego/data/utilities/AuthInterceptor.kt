@@ -30,7 +30,8 @@ class AuthInterceptor(
         // 2. Protegemos las rutas EXACTAS de tu backend basándonos en tu AuthController
         val isAuthRoute = path.contains("/api/auth/google") ||
                 path.contains("/api/auth/sms") ||
-                path.contains("/api/auth/registro")
+                path.contains("/api/auth/registro") ||
+                path.contains("/api/auth/vincular")
 
         // 3. Atrapamos el 401 y 403 SOLO si no estamos intentando iniciar sesión/registrarnos
         if ((response.code == 401 || response.code == 403) && !isAuthRoute) {

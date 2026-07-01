@@ -87,6 +87,7 @@ import com.grupo6.trego.ui.componentes.VistaError
 import com.grupo6.trego.ui.theme.TregoOrange
 import com.grupo6.trego.ui.usuario.componentes.DireccionGestion
 import org.koin.androidx.compose.koinViewModel
+import com.grupo6.trego.ui.usuario.componentes.MetodosAcceso
 
 @Composable
 fun PerfilScreen(
@@ -457,6 +458,15 @@ fun PerfilScreen(
                                 tint = Color.Gray
                             )
                         }
+                    }
+
+                    val usuarioActual = (state as? PerfilUiState.Success)?.user
+                    if (usuarioActual != null) {
+                        Spacer(modifier = Modifier.height(20.dp))
+                        MetodosAcceso(
+                            usuario = usuarioActual,
+                            onVinculado = { perfilView.cargarPerfil() }
+                        )
                     }
 
                     Spacer(modifier = Modifier.weight(1f))
