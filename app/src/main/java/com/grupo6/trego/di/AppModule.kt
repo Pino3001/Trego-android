@@ -31,6 +31,7 @@ import com.grupo6.trego.ui.home.platos.PlatoViewModel
 import com.grupo6.trego.ui.home.HomeViewModel
 import com.grupo6.trego.ui.home.ofertas.OfertaViewModel
 import com.grupo6.trego.ui.usuario.PerfilViewModel
+import com.grupo6.trego.ui.usuario.MetodosAccesoViewModel
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import org.koin.android.ext.koin.androidContext
@@ -109,5 +110,6 @@ val appModule = module {
     viewModel { PlatoViewModel(get()) }
     viewModel { OfertaViewModel(get()) }
     viewModel { HomeViewModel(get(), get()) }
+    viewModel { MetodosAccesoViewModel(get()) }
 
 }

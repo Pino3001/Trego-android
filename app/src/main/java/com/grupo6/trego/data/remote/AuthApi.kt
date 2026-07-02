@@ -1,8 +1,10 @@
 package com.grupo6.trego.data.remote
 
+import com.grupo6.trego.data.model.DTOUsuario
 import com.grupo6.trego.data.model.GoogleLoginRequest
 import com.grupo6.trego.data.model.LoginResponseDTO
 import com.grupo6.trego.data.model.SmsLoginRequest
+import com.grupo6.trego.data.model.VincularRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
@@ -22,5 +24,10 @@ interface AuthApiService {
     suspend fun loginConSMS(
         @Body body: SmsLoginRequest
     ): Response<LoginResponseDTO>
+
+    @POST("auth/vincular")
+    suspend fun vincularProveedor(
+        @Body body: VincularRequest
+    ): Response<DTOUsuario>
 
 }
