@@ -39,6 +39,11 @@ import com.grupo6.trego.data.utilities.ensureCloudinaryTransformation
 import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 
+/**
+ * Este componente es una tarjeta pequeña para mostrar los platos que tienen 
+ * descuentos especiales. Tiene una etiqueta llamativa con el porcentaje de 
+ * rebaja y muestra el precio original tachado junto al nuevo precio.
+ */
 @Composable
 fun OfertaItem(producto: DTOProducto, onClick: () -> Unit) {
     Card(
@@ -118,6 +123,7 @@ fun OfertaItem(producto: DTOProducto, onClick: () -> Unit) {
                 }
             }
 
+            /* Si el producto tiene un descuento asignado, mostramos una pequeña burbuja naranja con el porcentaje. */
             producto.oferta?.descuento?.let {
                 Surface(
                     modifier = Modifier

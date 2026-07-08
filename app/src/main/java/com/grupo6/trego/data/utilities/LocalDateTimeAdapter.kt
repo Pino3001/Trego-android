@@ -5,6 +5,10 @@ import java.lang.reflect.Type
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
+/**
+ * Este adaptador le enseña a la app cómo procesar fechas y horas completas (LocalDateTime) 
+ * al recibir información del servidor, asegurando que no haya errores de formato.
+ */
 class LocalDateTimeAdapter : JsonSerializer<LocalDateTime>, JsonDeserializer<LocalDateTime> {
 
     private val formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME

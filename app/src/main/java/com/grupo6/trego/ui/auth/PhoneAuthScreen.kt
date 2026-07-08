@@ -50,6 +50,11 @@ import org.koin.androidx.compose.koinViewModel
 import java.util.concurrent.TimeUnit
 
 
+/**
+ * Esta es la pantalla de inicio de sesión. Tiene un diseño limpio donde el usuario
+ * puede poner su número de teléfono y después validar el código que le llega por SMS.
+ * Todo está animado para que el paso a paso sea fluido y fácil de entender.
+ */
 enum class AuthStep { PHONE, VERIFY }
 
 @Composable
@@ -60,6 +65,7 @@ fun PhoneAuthScreen(
     val auth = remember { FirebaseAuth.getInstance() }
     val activity = LocalContext.current as Activity
 
+    /* Estos son los avisos de Firebase que nos dicen si el SMS se mandó bien o si hubo algún error. */
     val callbacks = remember {
         object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
             override fun onVerificationCompleted(credential: PhoneAuthCredential) {
@@ -180,7 +186,7 @@ fun StepBubble(number: String, label: String, active: Boolean) {
     }
 }
 
-// Componente de ingreso del numero de telefono
+/* La primera parte donde el usuario escribe su número de teléfono. */
 @Composable
 private fun PhoneStep(
     viewModel: AuthViewModel,
@@ -261,6 +267,7 @@ private fun PhoneStep(
     }
 }
 
+/* La segunda parte donde se ingresa el código de 6 dígitos para terminar el login. */
 @Composable
 private fun VerifyStep(
     viewModel: AuthViewModel,

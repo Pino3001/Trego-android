@@ -1,8 +1,8 @@
 package com.grupo6.trego.data.utilities
 
 /**
- * Transforma una URL de Cloudinary para forzar la salida en PNG.
- * Inserta "f_png/" después de "/upload/" si no existe ya otro formato.
+ * Estas funciones de extensión nos ayudan a manipular las URLs de las imágenes que vienen 
+ * de Cloudinary, por ejemplo para forzar que se descarguen como PNG en lugar de otros formatos.
  */
 fun String.toCloudinaryPng(): String {
     return if (this.contains("/upload/") && !this.contains("/f_")) {

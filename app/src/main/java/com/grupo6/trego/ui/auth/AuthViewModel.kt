@@ -16,6 +16,11 @@ import com.grupo6.trego.data.repository.UsuarioRepository
 import com.grupo6.trego.data.utilities.TokenManager
 import kotlinx.coroutines.launch
 
+/**
+ * Este ViewModel es el cerebro de la autenticación. Se encarga de manejar los estados
+ * del login por SMS y Google, guardar los tokens que nos da el servidor y registrar
+ * el dispositivo para las notificaciones apenas el usuario entra.
+ */
 class AuthViewModel(
     private val authApiService: AuthApiService,
     private val tokenManager: TokenManager,
@@ -58,7 +63,7 @@ class AuthViewModel(
         errorMessage = message
     }
 
-    // Enviar token firebase al backend con login vía SMS
+    /* Mandamos el token que nos dio Firebase al servidor para validar el login por SMS y guardar la sesión. */
     fun sendSMSTokenToBackend(
         firebaseToken: String,
         onSuccess: () -> Unit,
@@ -91,6 +96,7 @@ class AuthViewModel(
         }
     }
 
+    /* Hacemos lo mismo pero para los usuarios que prefieren entrar con su cuenta de Google. */
     fun sendGoogleTokenToBackend(
         idToken: String,
         onSuccess: () -> Unit,
@@ -123,6 +129,7 @@ class AuthViewModel(
         }
     }
 
+    /* Validamos el código de 6 dígitos que el usuario escribe cuando le llega el SMS. */
     fun verificarCodigoManual(auth: FirebaseAuth, onSuccess: () -> Unit) {
         isLoading = true
 
@@ -148,6 +155,7 @@ class AuthViewModel(
             }
     }
 
+    /* Apenas logueamos, le pedimos a Firebase su token de notificaciones y se lo pasamos al backend. */
     private fun obtenerYRegistrarFcmToken() {
         Log.d("FCM_AUTH", "Antes del getInstance de firebaseMessaging")
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->

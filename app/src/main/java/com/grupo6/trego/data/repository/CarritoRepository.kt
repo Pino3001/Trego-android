@@ -4,6 +4,10 @@ import com.grupo6.trego.data.model.DTOEliminarProductoRequest
 import com.grupo6.trego.data.model.DTOProductoPedido
 import com.grupo6.trego.data.remote.CarritoApiService
 
+/**
+ * Acá gestionamos toda la lógica del carrito de compras, permitiendo agregar, 
+ * modificar o quitar productos antes de finalizar el pedido.
+ */
 class CarritoRepository(
     private val api: CarritoApiService
 ) {
@@ -49,7 +53,7 @@ class CarritoRepository(
         return try {
             val response = api.modificarProductoCarrito(request)
             if (response.isSuccessful) {
-                Result.success(response.body())  // puede ser null si cantidad=0
+                Result.success(response.body())
             } else {
                 Result.failure(Exception("Error al modificar producto: ${response.code()}"))
             }
@@ -62,7 +66,7 @@ class CarritoRepository(
         return try {
             val response = api.eliminarProducto(request)
             if (response.isSuccessful) {
-                Result.success(response.body())  // puede ser null
+                Result.success(response.body())
             } else {
                 Result.failure(Exception("Error al eliminar producto: ${response.code()}"))
             }

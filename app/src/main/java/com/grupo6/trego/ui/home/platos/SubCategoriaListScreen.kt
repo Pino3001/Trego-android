@@ -46,6 +46,11 @@ import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 import org.koin.androidx.compose.koinViewModel
 
+/**
+ * Esta pantalla muestra la lista completa de subcategorías (como Hamburguesas, Pizzas, 
+ * Postres, etc.) para que el usuario pueda explorar por tipo de comida. Permite 
+ * filtrar por categoría principal y buscar subcategorías específicas por nombre.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubCategoriaListScreen(
@@ -90,7 +95,7 @@ fun SubCategoriaListScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Buscador y Filtros (Edge-to-Edge)
+                /* Sección superior con la barra de búsqueda y el botón para filtrar por categorías (Comida, Bebida, etc.). */
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Row(
@@ -166,6 +171,7 @@ fun SubCategoriaListScreen(
                         }
                     }
 
+                    /* Mostramos cada subcategoría en una cuadrícula de tres columnas para que sea fácil de navegar. */
                     is SubCategoriaUIstate.Cargado -> {
                         itemsIndexed(uiState.items) { index, subCategoria ->
                             val col = index % 3

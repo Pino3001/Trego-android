@@ -19,11 +19,9 @@ import androidx.compose.ui.unit.sp
 import com.grupo6.trego.ui.theme.TregoOrange
 
 /**
- * Selector de calificación mínima mediante estrellas tapeables.
- * Tocar la misma estrella ya seleccionada restablece el valor a 0 (sin mínimo).
- *
- * @param rating        Calificación actual (0-5 entero).
- * @param onRatingChange Callback con el nuevo valor entero seleccionado.
+ * Un selector de estrellas muy simple que permite al usuario filtrar o calificar.
+ * Si toca una estrella, se marcan todas las anteriores, y si toca la que ya 
+ * estaba seleccionada, se limpia la elección.
  */
 @Composable
 fun StarRatingSelector(

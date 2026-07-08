@@ -22,10 +22,20 @@ import java.util.UUID
 
 sealed class PerfilUiState {
     object Loading : PerfilUiState()
-    data class Success(val user: DTOUsuario, val direcciones: List<DTODireccion>, val tags: List<String> = emptyList() ) : PerfilUiState()
+    data class Success(
+        val user: DTOUsuario,
+        val direcciones: List<DTODireccion>,
+        val tags: List<String> = emptyList()
+    ) : PerfilUiState()
+
     data class Error(val message: String) : PerfilUiState()
 }
 
+/**
+ * Este ViewModel se encarga de todo lo relacionado con el usuario. Gestiona la carga 
+ * de sus datos personales, la subida de fotos de perfil a la nube y el mantenimiento 
+ * de sus direcciones guardadas, asegurando que la información esté siempre al día.
+ */
 class PerfilViewModel(
     private val repository: UsuarioRepository,
     private val cludinaryRepo: CloudinaryRepository
@@ -45,10 +55,11 @@ class PerfilViewModel(
         cargarPerfil()
     }
 
-    fun descartarError(){
+    fun descartarError() {
         _state.value = ultimoExito ?: PerfilUiState.Loading
     }
-    // ──── Carga completa (usado al iniciar y tras mutaciones) ────
+
+    /* Trae toda la información del usuario y sus direcciones en paralelo para que la carga sea más rápida. */
     fun cargarPerfil() {
         viewModelScope.launch {
             try {
@@ -66,17 +77,26 @@ class PerfilViewModel(
                         val successState = PerfilUiState.Success(
                             user = usuarioResult.getOrThrow(),
                             direcciones = direccionesResult.getOrThrow(),
-                            tags = direccionesResult.getOrThrow().mapNotNull { it.tag?.takeIf { t -> t.isNotBlank() } }
+                            tags = direccionesResult.getOrThrow()
+                                .mapNotNull { it.tag?.takeIf { t -> t.isNotBlank() } }
                         )
                         ultimoExito = successState
                         successState
                     }
+
                     usuarioResult.isFailure -> {
-                        PerfilUiState.Error(usuarioResult.exceptionOrNull()?.message ?: "Error al cargar perfil")
+                        PerfilUiState.Error(
+                            usuarioResult.exceptionOrNull()?.message ?: "Error al cargar perfil"
+                        )
                     }
+
                     direccionesResult.isFailure -> {
-                        PerfilUiState.Error(direccionesResult.exceptionOrNull()?.message ?: "Error al cargar direcciones")
+                        PerfilUiState.Error(
+                            direccionesResult.exceptionOrNull()?.message
+                                ?: "Error al cargar direcciones"
+                        )
                     }
+
                     else -> estadoAnterior
                 }
             } catch (e: Exception) {
@@ -85,7 +105,7 @@ class PerfilViewModel(
         }
     }
 
-    // ──── Actualizar perfil (dispara recarga completa) ────
+    /* Guarda los cambios en el perfil del usuario. Si cambió su foto, primero la subimos a Cloudinary y después mandamos la nueva URL al servidor. */
     fun actualizarPerfil(cliente: DTOUsuario, imagenUri: Uri?) {
         viewModelScope.launch {
             _state.value = PerfilUiState.Loading
@@ -95,7 +115,9 @@ class PerfilViewModel(
                 if (resultado.isSuccess) {
                     clienteParaActualizar = cliente.copy(urlImagen = resultado.getOrThrow())
                 } else {
-                    _eventChannel.send(resultado.exceptionOrNull()?.message ?: "Error al subir imagen")
+                    _eventChannel.send(
+                        resultado.exceptionOrNull()?.message ?: "Error al subir imagen"
+                    )
                     cargarPerfil()
                     return@launch
                 }
@@ -112,7 +134,7 @@ class PerfilViewModel(
         }
     }
 
-    // ──── Agregar dirección ────
+    /* Envía una nueva dirección al servidor para que el usuario la tenga disponible en sus próximos pedidos. */
     fun agregarDireccion(direccion: DTODireccion) {
         viewModelScope.launch {
             try {
@@ -150,6 +172,7 @@ class PerfilViewModel(
         }
     }
 
+    /* Proceso interno para subir una imagen de forma segura: pide permiso al backend y después sube el archivo directamente a la nube. */
     private suspend fun subirImagenACloudinary(imagenUri: Uri): Result<String> {
         val nombreArchivo = "perfil_${UUID.randomUUID()}"
         val tipo = "image"

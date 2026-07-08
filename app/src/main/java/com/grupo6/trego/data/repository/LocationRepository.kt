@@ -5,6 +5,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/**
+ * Este repositorio sirve para mantener actualizada la ubicación del usuario en toda la app, 
+ * ya sea detectada por GPS o ingresada manualmente.
+ */
 class LocationRepository {
     private val _currentAddress = MutableStateFlow<DTODireccion?>(null)
     val currentAddress: StateFlow<DTODireccion?> = _currentAddress.asStateFlow()

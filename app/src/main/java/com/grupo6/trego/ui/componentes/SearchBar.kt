@@ -36,6 +36,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.grupo6.trego.ui.theme.TregoOrange
 
+/**
+ * Una barra de búsqueda personalizada con bordes redondeados y un icono naranja.
+ * La usamos para que el usuario pueda filtrar restaurantes o platos de forma 
+ * rápida y visual.
+ */
 @Composable
 fun SearchBar(
     query: String,

@@ -1,6 +1,8 @@
 package com.grupo6.trego
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.padding
@@ -25,10 +27,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.navigation.navDeepLink
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
+import com.grupo6.trego.data.model.NavigationTarget
 import com.grupo6.trego.ui.auth.FormInicio
 import com.grupo6.trego.ui.auth.PhoneAuthScreen
 import com.grupo6.trego.ui.carrito.CarritoScreen
@@ -46,15 +48,23 @@ import com.grupo6.trego.ui.usuario.PerfilScreen
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.koin.androidx.compose.koinViewModel
 
+/**
+ * Este archivo es el mapa de navegación de toda la app. Acá definimos todas las rutas, 
+ * manejamos cómo se pasa de una pantalla a otra y controlamos qué partes de la interfaz 
+ * se muestran según dónde esté el usuario, como la barra de navegación de abajo.
+ */
 @Composable
 fun AppNavigation(
     pendingPaymentStatus: MutableStateFlow<String?> = MutableStateFlow(null),
-    navigateToOrders: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    navigationTarget: MutableStateFlow<NavigationTarget?> = MutableStateFlow(null)
 ) {
-    val activity = LocalContext.current as ComponentActivity
+    val context = LocalContext.current
+    val activity = context.findActivity()
     val navController = rememberNavController()
     val auth = Firebase.auth
-    val debaIrAPedidos by navigateToOrders.collectAsState()
+    val destinoPendiente by navigationTarget.collectAsState()
+    val carritoViewModel: CarritoViewModel =
+        koinViewModel(viewModelStoreOwner = activity ?: context as ComponentActivity)
 
     var user by remember { mutableStateOf(auth.currentUser) }
 
@@ -67,18 +77,29 @@ fun AppNavigation(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: ""
 
-    LaunchedEffect(debaIrAPedidos) {
-        if (debaIrAPedidos == true) {
-            navController.navigate("pedido") {
-                launchSingleTop = true
+    /* Este bloque se encarga de redirigir al usuario automáticamente cuando volvemos de un pago o cuando tocamos una notificación. */
+    LaunchedEffect(destinoPendiente) {
+        destinoPendiente?.let { target ->
+            if (target == NavigationTarget.PAGO_REALIZADO) {
+                carritoViewModel.marcarPagoExitoso()
+            } else {
+                carritoViewModel.recargarCarrito()
             }
-            navigateToOrders.value = false
+            val rutaDestino = when (target) {
+                NavigationTarget.PEDIDO -> "pedido"
+                NavigationTarget.HISTORIAL -> "historial"
+                NavigationTarget.PAGO_REALIZADO -> "pedido"
+            }
+            navController.navigate(rutaDestino) {
+                launchSingleTop = true
+                popUpTo("restaurants") { inclusive = false }
+            }
+            navigationTarget.value = null
         }
     }
 
-    // Cambiar dinámicamente el color de la barra de estado según la pantalla actual
+    /* Cambiamos el color de la barra de estado del celular para que combine con la pantalla actual: clarito para login y naranja para el resto de la app. */
     val view = LocalView.current
-    val context = LocalContext.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (context as Activity).window
@@ -96,7 +117,7 @@ fun AppNavigation(
         }
     }
     val rutasConBottomBar =
-        listOf("restaurants", "carrito", "pedido", "profile", "menu/{restauranteId}")
+        listOf("restaurants", "carrito", "pedido", "profile", "menu/{restauranteId}", "historial")
 
     val status = pendingPaymentStatus.collectAsState().value
     LaunchedEffect(user, status) {
@@ -108,7 +129,8 @@ fun AppNavigation(
         }
     }
 
-    val pedidoViewModel: PedidoViewModel = koinViewModel(viewModelStoreOwner = activity)
+    val pedidoViewModel: PedidoViewModel =
+        koinViewModel(viewModelStoreOwner = activity ?: context as ComponentActivity)
     val pedidoState by pedidoViewModel.activosState.collectAsState()
 
     // Calcular el contador de pedidos activos
@@ -122,6 +144,7 @@ fun AppNavigation(
         }
     }
 
+    /* Si el usuario está logueado y la ruta lo permite, mostramos la barra de pestañas de abajo con los contadores de carrito y pedidos activos. */
     Scaffold(
         bottomBar = {
             if (user != null && currentRoute.split("?")[0] in rutasConBottomBar) {
@@ -136,6 +159,7 @@ fun AppNavigation(
             }
         }
     ) { innerPadding ->
+        /* Definimos cada una de las pantallas de la app y qué información necesitan para cargarse, como el ID de un restaurante o el estado de un pago. */
         NavHost(
             navController = navController,
             startDestination = if (user == null) "login" else "restaurants",
@@ -175,8 +199,7 @@ fun AppNavigation(
             //  RUTA CARRITO CON DEEP LINK PARA MERCADO PAGO
             composable(
                 route = "carrito?status={status}",
-                arguments = listOf(navArgument("status") { nullable = true }),
-                deepLinks = listOf(navDeepLink { uriPattern = "trego://pago/{status}" })
+                arguments = listOf(navArgument("status") { nullable = true })
             ) { backStackEntry ->
                 val status = backStackEntry.arguments?.getString("status")
                 Log.d("DeepLink", "CarritoScreen composable: status=$status")
@@ -214,3 +237,8 @@ fun AppNavigation(
 }
 
 
+fun Context.findActivity(): ComponentActivity? = when (this) {
+    is ComponentActivity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}

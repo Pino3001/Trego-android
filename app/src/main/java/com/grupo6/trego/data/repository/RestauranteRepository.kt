@@ -6,6 +6,10 @@ import com.grupo6.trego.data.model.DTORestaurante
 import com.grupo6.trego.data.model.PageResponse
 import com.grupo6.trego.data.remote.RestaurantApiService
 
+/**
+ * Con este repositorio manejamos toda la información de los restaurantes, permitiéndonos
+ * buscarlos, ver sus menús y gestionar los comentarios de los usuarios.
+ */
 class RestauranteRepository(
     private val api: RestaurantApiService
 ) {

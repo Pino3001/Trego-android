@@ -11,6 +11,10 @@ import retrofit2.http.HTTP
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 
+/**
+ * Con este service gestionamos el carrito de compras en el servidor: agregar platos, 
+ * sacarlos o modificar las cantidades para que el pedido esté siempre al día.
+ */
 interface CarritoApiService {
 
     @GET("carrito")
@@ -30,6 +34,5 @@ interface CarritoApiService {
 
     @DELETE("carrito/items")
     suspend fun limpiarItemsCarrito(): Response<DTOCarrito>
-
 
 }

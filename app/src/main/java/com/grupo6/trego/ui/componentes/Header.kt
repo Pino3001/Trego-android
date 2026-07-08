@@ -25,6 +25,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.grupo6.trego.ui.theme.TregoOrange
 
+/**
+ * Este es el cabezal principal que usamos en casi todas las pantallas de la app.
+ * Es de color naranja, lleva el título centrado y nos permite poner botones 
+ * a los costados o contenido extra abajo si hace falta.
+ */
 @Composable
 fun TregoHeader(
     title: String,

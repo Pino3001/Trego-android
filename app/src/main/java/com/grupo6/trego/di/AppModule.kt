@@ -43,17 +43,23 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import kotlin.jvm.java
 
+/**
+ * En este archivo configuramos toda la inyección de dependencias de la app usando Koin.
+ * Básicamente, acá definimos cómo se crean y se comparten los servicios, repositorios 
+ * y ViewModels para que todo el sistema funcione de forma organizada.
+ */
 val appModule = module {
     val logging = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
     }
-    // TokenManager
+    
+    /* Guardamos el token de sesión de forma persistente en el dispositivo. */
     single { TokenManager(androidContext()) }
 
-    // Interceptor de autenticación
+    /* Interceptamos las llamadas para meter el token de autorización automáticamente. */
     single { AuthInterceptor(androidContext(), get()) }
 
-    // OkHttpClient configurado con el interceptor
+    /* Configuramos el cliente de red con seguridad y registro de llamadas. */
     single {
         OkHttpClient.Builder()
             .addInterceptor(get<AuthInterceptor>())
@@ -61,7 +67,7 @@ val appModule = module {
             .build()
     }
 
-    // Gson configurado con adaptadores para Java Time
+    /* Le enseñamos a Gson a entender los formatos de fecha que usa el servidor. */
     single {
         GsonBuilder()
             .registerTypeAdapter(LocalDateTime::class.java, LocalDateTimeAdapter())
@@ -69,16 +75,16 @@ val appModule = module {
             .create()
     }
 
-    // Retrofit
+    /* Definimos la base de nuestra conexión con la API del backend. */
     single {
         Retrofit.Builder()
-            .baseUrl("http://ec2-100-59-203-246.compute-1.amazonaws.com/api/")
+            .baseUrl("http://ec2-3-84-203-146.compute-1.amazonaws.com/api/")
             .client(get())
             .addConverterFactory(GsonConverterFactory.create(get()))
             .build()
     }
 
-    // Servicios API (las interfaces que usas con Retrofit)
+    /* Creamos las instancias de todos los servicios de red definidos. */
     single { get<Retrofit>().create(AuthApiService::class.java) }
     single { get<Retrofit>().create(RestaurantApiService::class.java) }
     single { get<Retrofit>().create(CarritoApiService::class.java) }

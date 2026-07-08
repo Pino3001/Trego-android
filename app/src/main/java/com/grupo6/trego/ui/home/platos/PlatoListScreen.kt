@@ -56,6 +56,11 @@ import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 import org.koin.androidx.compose.koinViewModel
 
+/**
+ * Esta pantalla muestra todos los platos que pertenecen a una subcategoría específica. 
+ * El usuario puede buscar por nombre de restaurante, aplicar filtros de calificación 
+ * y ordenar los platos por precio, todo con una cuadrícula visual y organizada.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlatoListScreen(
@@ -73,7 +78,7 @@ fun PlatoListScreen(
 
     val uiState = viewModel.uiState
 
-    // Cargar platos al iniciar o cuando cambie la subcategoría/dirección
+    /* Carga los platos apenas entramos a la pantalla o si cambiamos de categoría o ubicación. */
     LaunchedEffect(subCategoria, direccion) {
         viewModel.loadPlatos(subCategoria, direccion)
     }
@@ -122,7 +127,7 @@ fun PlatoListScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Buscador y Filtros
+                /* Cabezal con la barra de búsqueda y el botón para abrir los filtros avanzados. */
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Row(

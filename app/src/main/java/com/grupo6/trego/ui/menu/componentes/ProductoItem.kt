@@ -48,6 +48,12 @@ import com.grupo6.trego.ui.theme.OrangePillText
 import com.grupo6.trego.ui.theme.OrangePlaceholder
 import com.grupo6.trego.ui.theme.TregoOrange
 
+/**
+ * Este componente representa una fila de producto dentro de la carta. Muestra una 
+ * vista previa rápida con la foto, el nombre, el precio y una breve descripción. 
+ * Si es un combo, cambia el color a verde y lista lo que incluye; si es un plato 
+ * normal, usa el naranja clásico de la app.
+ */
 @Composable
 fun ProductoItem(
     producto: DTOProducto,
@@ -98,6 +104,7 @@ fun ProductoItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
 
+            /* Mostramos la imagen del plato o un ícono de error si no carga, usando colores que combinen con el tipo de producto. */
             if (producto.urlImagen != null) {
                 AsyncImage(
                     model = producto.urlImagen.ensureCloudinaryTransformation("w_150,h_150,c_fill,g_auto"),
@@ -137,6 +144,7 @@ fun ProductoItem(
                     overflow = TextOverflow.Ellipsis
                 )
 
+                /* Si es un combo, detallamos qué trae; si no, mostramos la descripción normal del plato. */
                 when {
                     // Si es un combo mostrarmos los elementos que componen el combo
                     textoCombo != null -> Text(
@@ -158,6 +166,7 @@ fun ProductoItem(
                     )
                 }
 
+                /* Mostramos el precio actual y, si tiene descuento, tachamos el precio viejo para que se note la oferta. */
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)

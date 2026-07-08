@@ -18,6 +18,11 @@ import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
+/**
+ * Este ViewModel se encarga de gestionar toda la carta de un restaurante. 
+ * Trae los platos, las ofertas y las opiniones de los usuarios, además de 
+ * permitir filtrar la comida por categoría o precio y mandar reseñas nuevas.
+ */
 class MenuViewModel(
     private val repository: RestauranteRepository
 ) : ViewModel() {
@@ -40,6 +45,7 @@ class MenuViewModel(
         }
     }
 
+    /* Le pedimos al servidor todo el menú del restaurante y separamos los platos normales de las ofertas. */
     fun loadMenu(restaurantId: Long) {
         viewModelScope.launch {
             _uiState.value = MenuUiState.Loading
@@ -83,6 +89,7 @@ class MenuViewModel(
         }
     }
 
+    /* Traemos los comentarios que otros usuarios dejaron sobre este lugar para mostrarlos en la pestaña de opiniones. */
     fun loadResenas(idRestaurante: Long? = null) {
         viewModelScope.launch {
             repository.getListarComentarios(idRestaurante?.toInt() ?: 0)
@@ -97,6 +104,7 @@ class MenuViewModel(
     }
 
 
+    /* Enviamos una nueva opinión al backend, asegurándonos primero de que el usuario no haya comentado antes. */
     fun enviarResena(restauranteId: Long, calificacion: Int, texto: String) {
         updateSuccess { copy(enviandoResena = true) }
 
@@ -179,6 +187,7 @@ class MenuViewModel(
         copy(ordenPrecio = orden, showOrdenDialog = false)
     }
 
+    /* Si el usuario escribió una reseña, refrescamos el puntaje total del restaurante para que se vea el cambio al toque. */
     fun actualizarPromedio(restauranteId: Long) {
         viewModelScope.launch {
             repository.getCalificacionPromedio(restauranteId.toInt())

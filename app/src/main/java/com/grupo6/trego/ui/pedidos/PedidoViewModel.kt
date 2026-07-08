@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
-import java.time.ZoneId
 import kotlin.time.Duration.Companion.milliseconds
 
 sealed class PedidoUiState {
@@ -34,6 +33,12 @@ sealed class PedidoUiState {
     data class Error(val message: String) : PedidoUiState()
 }
 
+/**
+ * Este ViewModel es el encargado de gestionar todo el ciclo de vida de los pedidos. 
+ * Controla tanto los pedidos que están en curso como el historial de compras pasadas, 
+ * permitiendo filtrar por fecha, estado o nombre del restaurante, y también 
+ * gestionar cancelaciones o reclamos.
+ */
 class PedidoViewModel(
     private val repository: PedidoRepository,
     private val repositoryRestaurante: RestauranteRepository,
@@ -76,6 +81,7 @@ class PedidoViewModel(
         _activosState.value = previousActivosState
     }
 
+    /* Trae los pedidos activos del usuario y busca la información de cada restaurante para mostrarla completa. */
     fun cargarPedidos(silencioso: Boolean = false) {
         if (_isRefreshing.value) return
         viewModelScope.launch {
@@ -109,10 +115,16 @@ class PedidoViewModel(
                     // 🚨 LOGS DE DEBUGGING:
                     Log.d("TREGO_DEBUG", "--- NUEVA CARGA DE PEDIDOS ---")
                     todosLosPedidos.forEach { pedido ->
-                        Log.d("TREGO_DEBUG", "Pedido ID: ${pedido.idPedido} | ID Restaurante que viene del Backend: ${pedido.idRestaurante}")
+                        Log.d(
+                            "TREGO_DEBUG",
+                            "Pedido ID: ${pedido.idPedido} | ID Restaurante que viene del Backend: ${pedido.idRestaurante}"
+                        )
                     }
                     restaurantesMap.forEach { (id, restaurante) ->
-                        Log.d("TREGO_DEBUG", "Mapa de la app -> ID Consultado: $id asignado a Nombre: ${restaurante?.nombre}")
+                        Log.d(
+                            "TREGO_DEBUG",
+                            "Mapa de la app -> ID Consultado: $id asignado a Nombre: ${restaurante?.nombre}"
+                        )
                     }
 
                     val pedidosConRestaurante = todosLosPedidos.map { pedido ->
@@ -138,6 +150,7 @@ class PedidoViewModel(
         }
     }
 
+    /* Función para refrescar la lista de pedidos apenas recibimos el aviso de que un pago se procesó bien. */
     suspend fun esperarNuevoPedido(timeOutMillis: Long = 15000L): Boolean {
 
         return withTimeoutOrNull(timeOutMillis.milliseconds) {
@@ -156,6 +169,7 @@ class PedidoViewModel(
         }
     }
 
+    /* Recupera todos los pedidos finalizados y los guarda en memoria para que el usuario pueda filtrarlos rápido. */
     fun cargarHistorial() {
         viewModelScope.launch {
             _historialState.value = PedidoUiState.Loading
@@ -207,6 +221,7 @@ class PedidoViewModel(
         }
     }
 
+    /* Le pide al servidor cancelar un pedido activo, siempre y cuando todavía esté en un estado permitido. */
     fun cancelarPedido(pedido: DTOPedido) {
         viewModelScope.launch {
             previousActivosState = _activosState.value
@@ -258,6 +273,7 @@ class PedidoViewModel(
     }
 
     // Lógica central donde convergen la búsqueda y todos los filtros
+    /* Procesa los filtros de búsqueda, estado y fecha sobre la lista de historial que tenemos cargada. */
     private fun aplicarFiltros() {
         val query = _searchQuery.value.trim()
         val estadoFiltro = _selectedEstado.value
@@ -292,17 +308,29 @@ class PedidoViewModel(
         _historialState.value = PedidoUiState.Historial(listaFinal)
     }
 
+    /* Envía un reclamo formal al restaurante por un pedido específico y actualiza la UI para mostrar que ya se reclamó. */
     fun crearReclamo(reclamo: DTOCrearReclamoRequest, onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             repository.realizarReclamo(reclamo)
                 .onSuccess {
                     _eventChannel.send("Reclamo enviado con éxito")
+                    val estadoActual = _activosState.value
+                    if (estadoActual is PedidoUiState.Success) {
+                        val listaActualizada = estadoActual.activos.map { uiModel ->
+                            if (uiModel.pedido.idPedido == reclamo.idPedido) {
+                                // Modificamos el tieneReclamo en true usando .copy()
+                                uiModel.copy(pedido = uiModel.pedido.copy(tieneReclamo = true))
+                            } else {
+                                uiModel
+                            }
+                        }
+                        _activosState.value = PedidoUiState.Success(listaActualizada)
+                    }
                     onSuccess()
                 }
                 .onFailure { error ->
                     val mensaje = error.message ?: "Error desconocido"
                     _eventChannel.send(mensaje)
-                    onSuccess()
                 }
         }
     }

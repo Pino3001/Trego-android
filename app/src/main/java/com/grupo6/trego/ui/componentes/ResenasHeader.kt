@@ -26,6 +26,11 @@ import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 import kotlin.math.roundToInt
 
+/**
+ * Este componente muestra el resumen de las opiniones de un restaurante. 
+ * Si no hay ninguna, invita al usuario a ser el primero; y si ya existen, 
+ * muestra el puntaje promedio bien grande y llamativo.
+ */
 @Composable
 fun ResenasHeader(resenas: List<DTOComentario>, promedio: Float, onClick: () -> Unit = {}) {
 

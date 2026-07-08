@@ -22,7 +22,6 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -47,15 +46,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.grupo6.trego.ui.componentes.ConfirmDialogComponent
 import com.grupo6.trego.data.model.DTOCrearReclamoRequest
 import com.grupo6.trego.data.model.EnumEstadoPedido
 import com.grupo6.trego.data.model.PedidoUiModel
+import com.grupo6.trego.ui.componentes.ConfirmDialogComponent
 import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 import com.grupo6.trego.ui.theme.TregoSecondary
 import java.time.format.DateTimeFormatter
 
+/**
+ * Esta tarjeta representa un pedido ya finalizado en el historial. Muestra los 
+ * datos básicos como el nombre del restaurante, la fecha y el total, además 
+ * de una etiqueta de color con el estado final. Si el pedido fue entregado, 
+ * también permite abrir una sección para mandar un reclamo.
+ */
 @Composable
 fun HistorialCard(
     item: PedidoUiModel,
@@ -75,7 +80,7 @@ fun HistorialCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
-            // --- Cuerpo principal ---
+            /* Parte principal de la tarjeta con toda la información del pedido y el total destacado. */
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -166,7 +171,7 @@ fun HistorialCard(
                     )
                 }
 
-                // --- Formulario expandible ---
+                /* Sección desplegable para escribir y enviar un reclamo si el pedido ya fue entregado. */
                 AnimatedVisibility(
                     visible = reclamar,
                     enter = expandVertically() + fadeIn(initialAlpha = 0.3f),

@@ -31,10 +31,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,6 +46,11 @@ import com.grupo6.trego.ui.theme.TregoOrange
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+/**
+ * Este componente agrupa todas las herramientas de búsqueda y filtrado para el historial. 
+ * Permite buscar por texto, cambiar el orden de la lista (más nuevos o más viejos) 
+ * y filtrar rápidamente usando chips para la fecha o el estado del pedido.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FiltrosHistorial(

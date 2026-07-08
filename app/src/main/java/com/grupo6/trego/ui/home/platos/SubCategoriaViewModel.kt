@@ -17,6 +17,10 @@ sealed class SubCategoriaUIstate {
     data class Error(val mensaje: String) : SubCategoriaUIstate()
 }
 
+/**
+ * Este ViewModel se encarga de manejar las subcategorías de productos (como Hamburguesas, 
+ * Pizzas, etc.). Permite buscarlas por nombre y filtrarlas por su categoría principal.
+ */
 class SubCategoriaViewModel(private val repository: SubcategoriaRepository) : ViewModel() {
 
     private var allSubcategorias = emptyList<DTOSubCategoria>()
@@ -37,6 +41,7 @@ class SubCategoriaViewModel(private val repository: SubcategoriaRepository) : Vi
         fetchSubcategorias()
     }
 
+    /* Trae todas las subcategorías desde el servidor y las guarda para poder filtrarlas localmente. */
     fun fetchSubcategorias() {
         viewModelScope.launch {
             // Si ya tenemos datos, usamos el indicador de refresco (isRefreshing)
@@ -69,6 +74,7 @@ class SubCategoriaViewModel(private val repository: SubcategoriaRepository) : Vi
         aplicarFiltros()
     }
 
+    /* Filtra la lista de subcategorías según lo que el usuario escribe y la categoría que seleccionó. */
     private fun aplicarFiltros() {
         val filtradas = allSubcategorias.filter { sub ->
             val coincideNombre = sub.nombre.contains(searchQuery, ignoreCase = true)

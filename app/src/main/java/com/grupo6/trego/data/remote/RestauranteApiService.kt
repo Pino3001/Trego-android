@@ -11,9 +11,12 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 
+/**
+ * Acá centralizamos todo lo que necesitamos de los restaurantes: buscarlos por ubicación, 
+ * ver sus menús, leer comentarios o dejar una reseña propia.
+ */
 interface RestaurantApiService {
 
-    // ── Listar restaurantes por zona ──
     @POST("restaurantes/listarXdirreccion")
     suspend fun listarRestaurantesPorDireccion(
         @Body direccion: DTODireccion
@@ -27,13 +30,10 @@ interface RestaurantApiService {
         @Query("size") size: Int = 10
     ): Response<PageResponse<DTORestaurante>>
 
-    // ── Buscar restaurantes por nombre ──
     @GET("restaurantes/listar")
     suspend fun buscarRestaurantesPorNombre(
         @Query("nombre") nombre: String
     ): Response<List<DTORestaurante>>
-
-    // ── Ver menú de un restaurante (con sus productos) ──
 
     @GET("pedido/restaurante/{restauranteId}/verMenu")
     suspend fun verMenuRestaurante(

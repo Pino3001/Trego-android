@@ -31,6 +31,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.grupo6.trego.ui.theme.TregoOrange
 
+/**
+ * Estos componentes sirven para mostrar mensajes de estado en pantalla completa.
+ * Los usamos cuando el carrito está vacío, cuando hay un error de conexión 
+ * o para avisar que un restaurante está cerrado.
+ */
 @Composable
 fun VistaEstado(
     mensaje: String,

@@ -10,6 +10,10 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Query
 
+/**
+ * Este service se encarga de todo el flujo de los pedidos: desde confirmarlos para pagar 
+ * con Mercado Pago, hasta ver el historial de lo que compramos o pedir un reembolso.
+ */
 interface PedidoApiService {
 
     @POST("pedido/confirmar")

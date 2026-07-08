@@ -1,7 +1,6 @@
 package com.grupo6.trego.ui.carrito
 
 import CarritoRepository
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -18,11 +17,13 @@ import com.grupo6.trego.data.repository.LocationRepository
 import com.grupo6.trego.data.repository.PedidoRepository
 import com.grupo6.trego.data.repository.UsuarioRepository
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 sealed class CarritoUiState {
     object Cargando : CarritoUiState()
@@ -42,6 +43,11 @@ sealed class DireccionesState {
     data class Error(val message: String) : DireccionesState()
 }
 
+/**
+ * Este ViewModel es el encargado de toda la lógica del carrito de compras.
+ * Controla qué productos tenemos guardados, calcula los totales, gestiona las 
+ * direcciones de entrega y se encarga de conectar con el sistema de pagos.
+ */
 class CarritoViewModel(
     private val repository: CarritoRepository,
     private val pedidoRepository: PedidoRepository,
@@ -100,6 +106,7 @@ class CarritoViewModel(
         viewModelScope.launch { _errorEvent.send(mensaje) }
     }
 
+    /* Pedimos al repositorio que nos traiga los productos que el usuario ya tiene en su carrito. */
     private fun cargarCarrito() {
         viewModelScope.launch {
             uiState = CarritoUiState.Cargando
@@ -126,6 +133,7 @@ class CarritoViewModel(
         }
     }
 
+    /* Buscamos las direcciones guardadas del usuario para que pueda elegir dónde recibir su pedido. */
     fun cargarDirecciones() {
         viewModelScope.launch {
             _direccionesState.value = DireccionesState.Cargando
@@ -149,6 +157,7 @@ class CarritoViewModel(
         return mismoId && mismosIngredientes
     }
 
+    /* Esta función se encarga de guardar los cambios cuando el usuario edita un producto o agrega uno nuevo. */
     fun confirmarModal(itemModificado: DTOProductoPedido) {
         viewModelScope.launch {
             uiState = CarritoUiState.Cargando
@@ -246,6 +255,7 @@ class CarritoViewModel(
         }
     }
 
+    /* Aumenta o disminuye la cantidad de un producto directamente desde la pantalla del carrito. */
     fun cambiarCantidad(item: DTOProductoPedido, delta: Int) {
         val nuevaCantidad = (item.cantidad ?: 0) + delta
         if (nuevaCantidad <= 0) {
@@ -283,6 +293,7 @@ class CarritoViewModel(
         }
     }
 
+    /* Saca un producto del carrito y actualiza la lista que ve el usuario. */
     fun eliminarItem(item: DTOProductoPedido) {
         viewModelScope.launch {
             // Ya no hace falta armar el objeto a mano, le mandamos el item entero que trae su idLinea
@@ -387,6 +398,7 @@ class CarritoViewModel(
         total = _items.sumOf { (it.subtotal ?: 0f).toDouble() }
     }
 
+    /* Preparamos el terreno para hacer el pago, pidiendo al servidor la información de Mercado Pago. */
     fun confirmarPedido() {
         if (_items.isEmpty()) {
             emitirError("El carrito está vacío")
@@ -437,6 +449,8 @@ class CarritoViewModel(
             restauranteId = null
             nombreRestaurante = ""
             uiState = CarritoUiState.PagoExitoso
+            delay(1000.milliseconds)
+            uiState = CarritoUiState.Vacio
         }
     }
 

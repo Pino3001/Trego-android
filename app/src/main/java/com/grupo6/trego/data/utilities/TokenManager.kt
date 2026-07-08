@@ -3,7 +3,10 @@ package com.grupo6.trego.data.utilities
 import android.content.Context
 import android.content.SharedPreferences
 
-// Guardara el token de sesion en el sistema para no tener que iniciar sesion cada vez que se ingresa (Guarda en memoria no RAM)
+/**
+ * Esta clase se encarga de guardar y recuperar el token de sesión en el almacenamiento
+ * local del teléfono. Así evitamos que el usuario tenga que loguearse cada vez que abre la app.
+ */
 class TokenManager(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
 

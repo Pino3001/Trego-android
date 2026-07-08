@@ -12,6 +12,10 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Query
 
+/**
+ * Acá manejamos toda la info del perfil del usuario, como sus direcciones guardadas, 
+ * la actualización de sus datos y la vinculación del token para notificaciones.
+ */
 interface UsuarioApiService {
     @GET("clientes/actual")
     suspend fun verPerfil(): Response<DTOUsuario>

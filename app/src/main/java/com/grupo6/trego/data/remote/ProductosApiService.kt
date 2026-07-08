@@ -7,6 +7,10 @@ import retrofit2.http.Body
 import retrofit2.http.POST
 import retrofit2.http.Query
 
+/**
+ * Con este service pedimos al servidor los platos y las ofertas que están disponibles 
+ * según la zona donde esté el usuario.
+ */
 interface ProductosApiService {
     @POST("productos/listarProductosSubcategorias")
     suspend fun listarPlatos(

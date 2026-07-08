@@ -54,6 +54,12 @@ import com.grupo6.trego.ui.componentes.TregoHeader
 import com.grupo6.trego.ui.theme.TregoOrange
 import com.grupo6.trego.ui.usuario.PerfilViewModel
 
+/**
+ * Este componente es el centro de gestión para todas las direcciones del usuario. 
+ * Muestra la lista completa de ubicaciones guardadas, permite editarlas una por 
+ * una o agregar nuevas a través de un botón flotante, alternando entre la 
+ * lista y el formulario de carga.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DireccionGestion(
@@ -87,6 +93,7 @@ fun DireccionGestion(
             targetState = mostrandoFormulario,
             label = "transicion_vistas"
         ) { mostrando ->
+            /* Si el usuario elige crear o editar, mostramos el formulario detallado para completar la info. */
             if (mostrando) {
                 // ─── VISTA 2: FORMULARIO ───
                 DireccionForm(
@@ -102,7 +109,7 @@ fun DireccionGestion(
                     tagsExistentes = tagsExistentes,
                 )
             } else {
-                // ─── VISTA 1: LISTA CON SCAFFOLD ───
+                /* Si no, mostramos la lista principal con todas las direcciones que el usuario tiene vinculadas a su cuenta. */
                 Scaffold(
                     topBar = {
                         TregoHeader(

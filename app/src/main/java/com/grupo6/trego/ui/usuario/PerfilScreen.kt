@@ -36,10 +36,8 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -71,7 +69,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -81,14 +78,19 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.grupo6.trego.R
 import com.grupo6.trego.data.model.DTOUsuario
-import com.grupo6.trego.ui.componentes.DialogComponent
 import com.grupo6.trego.ui.componentes.TregoHeader
 import com.grupo6.trego.ui.componentes.VistaError
 import com.grupo6.trego.ui.theme.TregoOrange
 import com.grupo6.trego.ui.usuario.componentes.DireccionGestion
-import org.koin.androidx.compose.koinViewModel
 import com.grupo6.trego.ui.usuario.componentes.MetodosAcceso
+import org.koin.androidx.compose.koinViewModel
 
+/**
+ * Esta es la pantalla principal del perfil del usuario. Permite ver y editar sus 
+ * datos personales, cambiar su foto de perfil, gestionar sus métodos de acceso 
+ * (como vincular Google o SMS) y administrar sus direcciones de entrega, todo 
+ * en una interfaz limpia y fácil de navegar.
+ */
 @Composable
 fun PerfilScreen(
     onLogout: () -> Unit
@@ -264,6 +266,7 @@ fun PerfilScreen(
                     )
                 }
             }
+
             else -> {
                 Column(
                     modifier = Modifier
@@ -305,6 +308,7 @@ fun PerfilScreen(
                                     .border(2.dp, TregoOrange.copy(alpha = 0.5f), CircleShape)
                             )
                         }
+                        /* Si estamos editando el perfil, mostramos un pequeño ícono de cámara sobre la foto para que el usuario pueda cambiarla. */
                         if (isEditing) {
                             Surface(
                                 shape = CircleShape,
@@ -351,35 +355,6 @@ fun PerfilScreen(
                                 imeAction = ImeAction.Next
                             ),
                         )
-
-                        OutlinedTextField(
-                            value = telefonoInput,
-                            onValueChange = { telefonoInput = it },
-                            label = { Text("Número de Teléfono") },
-                            leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
-                            enabled = isEditing,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Phone,
-                                capitalization = KeyboardCapitalization.Words,
-                                imeAction = ImeAction.Next
-                            )
-                        )
-
-                        OutlinedTextField(
-                            value = emailUsuario,
-                            onValueChange = { },
-                            label = { Text("Correo Electrónico") },
-                            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
-                            enabled = false,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            keyboardOptions = KeyboardOptions(
-                                capitalization = KeyboardCapitalization.Words,
-                                imeAction = ImeAction.Next
-                            ),
-                        )
                     }
 
                     if (isEditing) {
@@ -408,6 +383,19 @@ fun PerfilScreen(
                                 color = Color.White
                             )
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = Color(0xFFEEEEEE), thickness = 1.dp)
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    /* Sección para administrar las formas de entrar a la app, mostrando cuáles ya están vinculadas. */
+                    val usuarioActual = (state as? PerfilUiState.Success)?.user
+                    if (usuarioActual != null) {
+                        MetodosAcceso(
+                            usuario = usuarioActual,
+                            onVinculado = { perfilView.cargarPerfil() }
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -460,19 +448,10 @@ fun PerfilScreen(
                         }
                     }
 
-                    val usuarioActual = (state as? PerfilUiState.Success)?.user
-                    if (usuarioActual != null) {
-                        Spacer(modifier = Modifier.height(20.dp))
-                        MetodosAcceso(
-                            usuario = usuarioActual,
-                            onVinculado = { perfilView.cargarPerfil() }
-                        )
-                    }
-
                     Spacer(modifier = Modifier.weight(1f))
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Cerrar sesión
+                    /* Botón llamativo en rojo para que el usuario pueda salir de su cuenta de forma segura. */
                     OutlinedButton(
                         onClick = {
                             auth.signOut()

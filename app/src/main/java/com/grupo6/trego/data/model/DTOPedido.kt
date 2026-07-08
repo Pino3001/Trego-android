@@ -13,5 +13,6 @@ data class DTOPedido(
     val fechaCreacion: LocalDateTime? = null,
     val fechaExpiracion: LocalDateTime? = null,
     val horaEntregaEstimada: LocalDateTime? = null,
-    val tiempoPreparacion: Int? = null
+    val tiempoPreparacion: Int? = null,
+    val tieneReclamo: Boolean? = false
 )

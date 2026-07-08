@@ -54,6 +54,11 @@ import androidx.compose.ui.unit.sp
 import com.grupo6.trego.ui.theme.TregoOrange
 
 
+/**
+ * Este modal lo usamos para que el usuario pueda dejar su opinión sobre un 
+ * restaurante. Incluye el selector de estrellas animado y un espacio para 
+ * escribir su experiencia con un límite de caracteres.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalificacionModal(

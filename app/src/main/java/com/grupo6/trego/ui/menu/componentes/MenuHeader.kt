@@ -1,6 +1,5 @@
 package com.grupo6.trego.ui.menu.componentes
 
-import android.R.attr.rating
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -18,17 +17,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,9 +36,14 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.grupo6.trego.data.model.DTORestaurante
 import com.grupo6.trego.data.utilities.ensureCloudinaryTransformation
-import com.grupo6.trego.ui.componentes.StarRatingSelector
 import com.grupo6.trego.ui.theme.TregoOrange
 
+/**
+ * Este es el cabezal de la pantalla de menú. Tiene una imagen de portada grande 
+ * con un efecto de degradado para que el nombre del restaurante se lea clarito. 
+ * También muestra etiquetas rápidas con el puntaje, si está abierto o cerrado 
+ * y a qué categoría pertenece.
+ */
 @Composable
 fun MenuHeader(
     restaurante: DTORestaurante,
@@ -57,7 +56,7 @@ fun MenuHeader(
             .height(180.dp) // Altura fija para dar presencia a la imagen
             .background(TregoOrange)
     ) {
-        // 1. Imagen de fondo (Ocupará toda la caja, incluso detrás de la barra de estado)
+        /* Ponemos la foto del restaurante de fondo y le aplicamos un degradado oscuro abajo para resaltar el texto. */
         AsyncImage(
             model = restaurante.fotoPortada?.ensureCloudinaryTransformation("w_800,h_400,c_fill,g_auto"),
             contentDescription = "Portada del restaurante",
@@ -130,13 +129,17 @@ fun MenuHeader(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Badges
+                /* Etiquetas informativas que aparecen bajo el nombre: estrellas, estado de apertura y categoría. */
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    BadgeSuperficie(icono = "⭐", texto = restaurante.calificacionProm.toString(), onClicStar = onStarClick)
+                    BadgeSuperficie(
+                        icono = "⭐",
+                        texto = restaurante.calificacionProm.toString(),
+                        onClicStar = onStarClick
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
 
                     BadgeSuperficie(
@@ -146,7 +149,10 @@ fun MenuHeader(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    BadgeSuperficie(icono = "🍽️", texto = restaurante.categoria.toString() ?: "Sin categoría")
+                    BadgeSuperficie(
+                        icono = "🍽️",
+                        texto = restaurante.categoria?.toString() ?: "S/C"
+                    )
                 }
             }
         }
@@ -155,7 +161,12 @@ fun MenuHeader(
 
 // Componente auxiliar para que los Badges queden limpios en código
 @Composable
-private fun BadgeSuperficie(icono: String, texto: String, dotColor: Color? = null, onClicStar: () -> Unit = {}) {
+private fun BadgeSuperficie(
+    icono: String,
+    texto: String,
+    dotColor: Color? = null,
+    onClicStar: () -> Unit = {}
+) {
 
     Surface(
         shape = RoundedCornerShape(50),

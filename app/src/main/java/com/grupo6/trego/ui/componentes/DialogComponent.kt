@@ -25,6 +25,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.grupo6.trego.ui.theme.TregoOrange
 
+/**
+ * Un diálogo de advertencia estándar para mostrar mensajes importantes o 
+ * errores que necesitan la atención inmediata del usuario. Tiene un botón 
+ * de "Entendido" para cerrarlo.
+ */
 @Composable
 fun DialogComponent(
     message: String,

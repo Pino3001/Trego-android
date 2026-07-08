@@ -20,6 +20,11 @@ import com.grupo6.trego.data.model.SortOrder
 import com.grupo6.trego.ui.componentes.StarRatingSelector
 import com.grupo6.trego.ui.theme.TregoOrange
 
+/**
+ * Este panel deslizable permite al usuario filtrar la lista de platos. Tiene opciones 
+ * para ordenar por precio (de mayor a menor o viceversa) y para establecer una 
+ * calificación mínima basada en las opiniones de otros clientes.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlatoFilterBottomSheet(

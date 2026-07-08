@@ -54,6 +54,11 @@ import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 import org.koin.androidx.compose.koinViewModel
 
+/**
+ * Esta es la pantalla donde el usuario puede seguir el estado de sus pedidos actuales. 
+ * Permite ver qué está pasando con su comida en tiempo real, cancelar si hace falta 
+ * o iniciar un reclamo si hubo algún problema, además de dar acceso rápido al historial.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PedidoScreen(navController: NavController) {
@@ -66,7 +71,7 @@ fun PedidoScreen(navController: NavController) {
     var pedidoACancelar by remember { mutableStateOf<PedidoUiModel?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Escuchamos el evento de SnackBar
+    /* Mostramos avisos en pantalla cuando un pedido se cancela o se envía un reclamo con éxito. */
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { message ->
             snackbarHostState.showSnackbar(message)
@@ -152,6 +157,7 @@ fun PedidoScreen(navController: NavController) {
                 }
 
                 is PedidoUiState.Success -> {
+                    /* Si no hay pedidos en marcha, mostramos un mensaje amigable invitando al usuario a pedir algo. */
                     if (state.activos.isEmpty()) {
                         Box(
                             modifier = Modifier
@@ -182,7 +188,7 @@ fun PedidoScreen(navController: NavController) {
                                 )
                             }
 
-                            // CORRECCIÓN: Agregado 'key' único para optimizar recomposiciones de la lista
+                            /* Listamos cada pedido activo usando una tarjeta que muestra todos sus detalles y acciones. */
                             items(
                                 items = state.activos,
                                 key = { it.pedido.idPedido ?: 0 }
@@ -202,7 +208,7 @@ fun PedidoScreen(navController: NavController) {
                 else -> {}
             }
 
-            // Diálogo de confirmación de cancelación
+            /* Un diálogo de seguridad para confirmar que el usuario realmente quiere cancelar su pedido. */
             pedidoACancelar?.let { seguroPedido ->
                 ConfirmDialogComponent(
                     title = "Cancelar Pedido",

@@ -28,6 +28,12 @@ import java.util.concurrent.TimeUnit
 
 enum class SmsLinkStep { IDLE, PHONE, CODE }
 
+/**
+ * Este ViewModel permite al usuario agregar nuevas formas de entrar a su cuenta. 
+ * Gestiona el proceso de vincular una cuenta de Google o un número de teléfono por SMS, 
+ * encargándose de la comunicación con Firebase y de avisar al backend para que guarde 
+ * la asociación de forma permanente.
+ */
 class MetodosAccesoViewModel(
     private val authApiService: AuthApiService
 ) : ViewModel() {
@@ -70,6 +76,7 @@ class MetodosAccesoViewModel(
         error = null
     }
 
+    /* Inicia el proceso para que el usuario vincule su cuenta de Google actual con su perfil de Trego. */
     fun vincularGoogle(context: Context, onVinculado: () -> Unit) {
         val user = FirebaseAuth.getInstance().currentUser
         if (user == null) {
@@ -124,6 +131,7 @@ class MetodosAccesoViewModel(
         }
     }
 
+    /* Envía el SMS de verificación al número de teléfono ingresado para empezar el proceso de vinculación. */
     fun enviarCodigoSms(activity: Activity, onVinculado: () -> Unit) {
         val user = FirebaseAuth.getInstance().currentUser
         if (user == null) {
@@ -167,6 +175,7 @@ class MetodosAccesoViewModel(
         PhoneAuthProvider.verifyPhoneNumber(options)
     }
 
+    /* Valida el código que el usuario recibió por SMS y, si es correcto, vincula el teléfono a su cuenta. */
     fun confirmarCodigoSms(onVinculado: () -> Unit) {
         if (otpCode.length != 6) {
             error = "Ingresá el código de 6 dígitos."
@@ -210,6 +219,7 @@ class MetodosAccesoViewModel(
         }
     }
 
+    /* Le avisa a nuestro servidor que la vinculación en Firebase fue exitosa para que la registre en la base de datos. */
     private suspend fun finalizarVinculacion(
         firebaseToken: String,
         mensaje: String,
@@ -240,14 +250,19 @@ class MetodosAccesoViewModel(
         return when {
             msg.contains("credential-already-in-use") ->
                 "Ese método ya está vinculado a otra cuenta."
+
             msg.contains("already associated") ->
                 "Ese método ya está vinculado a otra cuenta."
+
             msg.contains("provider-already-linked") ->
                 "Ese método ya está vinculado a tu cuenta."
+
             msg.contains("email-already-in-use") ->
                 "Ese correo ya está en uso por otra cuenta."
+
             msg.contains("invalid-verification-code") ->
                 "El código es incorrecto o expiró."
+
             else -> msg.ifBlank { "No se pudo vincular el método. Intentá de nuevo." }
         }
     }

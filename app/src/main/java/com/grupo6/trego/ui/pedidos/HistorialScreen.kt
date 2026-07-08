@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.SearchOff
@@ -56,6 +55,12 @@ import com.grupo6.trego.ui.theme.TregoOrange
 import java.time.Instant
 import java.time.ZoneId
 
+/**
+ * Esta pantalla muestra todos los pedidos que el usuario ya finalizó. 
+ * Incluye un sistema potente de filtros para buscar por nombre de restaurante, 
+ * por fecha o por el estado final del pedido (entregado, cancelado, etc.), 
+ * permitiendo tener un control total sobre el historial de compras.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistorialScreen(
@@ -80,6 +85,7 @@ fun HistorialScreen(
         }
     }
 
+    /* Cuando el usuario quiere filtrar por fecha, abrimos este calendario nativo para que elija el día exacto. */
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState()
         MaterialTheme(
@@ -163,7 +169,7 @@ fun HistorialScreen(
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
-            // Barra de filtros — 100% sincronizada con el ViewModel
+            /* Barra superior con buscador y botones de filtro rápido que se sincronizan al toque con la lista. */
             FiltrosHistorial(
                 searchQuery = searchQuery,
                 onSearchChange = { viewModel.onSearchQueryChange(it) },

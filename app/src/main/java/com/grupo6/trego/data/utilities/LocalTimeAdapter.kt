@@ -5,6 +5,10 @@ import java.lang.reflect.Type
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
+/**
+ * Uso este adaptador para que Retrofit sepa cómo leer y escribir datos de tipo hora (LocalTime)
+ * cuando se comunica con el servidor, siguiendo el formato estándar ISO.
+ */
 class LocalTimeAdapter : JsonSerializer<LocalTime>, JsonDeserializer<LocalTime> {
 
     private val formatter = DateTimeFormatter.ISO_LOCAL_TIME

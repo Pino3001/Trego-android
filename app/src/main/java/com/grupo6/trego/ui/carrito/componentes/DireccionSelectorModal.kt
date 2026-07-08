@@ -55,6 +55,11 @@ import com.grupo6.trego.data.utilities.reverseGeocode
 import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 
+/**
+ * Este modal permite al usuario elegir dónde quiere recibir su pedido. Puede seleccionar 
+ * una de sus direcciones guardadas o usar su ubicación actual por GPS, permitiendo 
+ * editar los detalles como el número de casa o el apartamento.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DireccionSelectorModal(
@@ -79,7 +84,7 @@ fun DireccionSelectorModal(
     var esquinaInput by remember { mutableStateOf("") }
     var apartamentoInput by remember { mutableStateOf("") }
 
-    // Cuando llega la ubicación, llamar a Geoapify
+    /* Cuando el usuario elige usar su ubicación actual, usamos reverseGeocode para autocompletar la calle y el número. */
     LaunchedEffect(locationState) {
         if (locationState is LocationState.Available) {
             val loc = locationState as LocationState.Available
@@ -117,7 +122,7 @@ fun DireccionSelectorModal(
                 textAlign = TextAlign.Center
             )
 
-            // Toggle Guardadas / Ubicación actual
+            /* Pestañas para cambiar entre las direcciones guardadas y la detección por GPS. */
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -295,6 +300,7 @@ fun DireccionSelectorModal(
                         }
                     }
 
+                /* Si el GPS está activado, mostramos los campos para que el usuario confirme o corrija su dirección. */
                     is LocationState.Available -> {
                         if (cargandoGeocode) {
                             Box(

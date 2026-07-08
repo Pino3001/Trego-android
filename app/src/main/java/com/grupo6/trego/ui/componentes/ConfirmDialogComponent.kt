@@ -28,6 +28,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.grupo6.trego.ui.theme.TregoOrange
 
+/**
+ * Un diálogo de confirmación para acciones que no se pueden deshacer fácilmente, 
+ * como borrar algo o confirmar una compra. Tiene botones claros para aceptar 
+ * o cancelar la operación.
+ */
 @Composable
 fun ConfirmDialogComponent(
     title: String = "Confirmar Acción",

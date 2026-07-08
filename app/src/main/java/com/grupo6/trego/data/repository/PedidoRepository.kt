@@ -7,6 +7,10 @@ import com.grupo6.trego.data.model.DTOPedido
 import com.grupo6.trego.data.model.DTOPreferenciaMP
 import com.grupo6.trego.data.remote.PedidoApiService
 
+/**
+ * Este repositorio centraliza todo lo que tiene que ver con los pedidos, desde confirmarlos
+ * hasta manejar los reclamos y el historial de compras.
+ */
 class PedidoRepository(private val api: PedidoApiService) {
     suspend fun confirmarPedido(request: DTODireccion): Result<DTOPreferenciaMP> {
         return try {

@@ -5,6 +5,10 @@ import com.grupo6.trego.data.model.DTOProductoZona
 import com.grupo6.trego.data.model.DTOSubCategoria
 import com.grupo6.trego.data.remote.ProductosApiService
 
+/**
+ * Este repositorio se encarga de pedir al servidor los platos de cada categoría y 
+ * las ofertas disponibles según la ubicación del usuario.
+ */
 class ProductoRepository(private val apiService: ProductosApiService) {
 
     /**

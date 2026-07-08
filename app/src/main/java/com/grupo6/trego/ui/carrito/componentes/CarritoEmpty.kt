@@ -10,6 +10,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+/**
+ * Un componente sencillo para mostrarle al usuario que todavía no ha agregado nada 
+ * a su carrito, invitándolo a empezar a comprar.
+ */
 @Composable
 fun CarritoEmpty() {
     Column(

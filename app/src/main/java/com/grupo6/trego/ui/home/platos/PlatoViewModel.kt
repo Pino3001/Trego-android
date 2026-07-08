@@ -20,6 +20,11 @@ sealed class PlatoUIState {
     data class Error(val message: String) : PlatoUIState()
 }
 
+/**
+ * Este ViewModel se encarga de gestionar la lista de platos de una subcategoría.
+ * Se ocupa de pedir los datos al repositorio, filtrar por nombre de restaurante, 
+ * por calificación mínima y de ordenar los platos por precio.
+ */
 class PlatoViewModel(
     private val repository: ProductoRepository
 ) : ViewModel() {
@@ -41,6 +46,7 @@ class PlatoViewModel(
     var isRefreshing by mutableStateOf(false)
         private set
 
+    /* Carga la lista de platos desde el servidor según la subcategoría y la ubicación del usuario. */
     fun loadPlatos(subCategoria: DTOSubCategoria, direccion: DTODireccion) {
         viewModelScope.launch {
             if (allPlatos.isEmpty()) uiState = PlatoUIState.Loading
@@ -77,6 +83,7 @@ class PlatoViewModel(
         applyFiltersAndSort()
     }
 
+    /* Aplica todos los filtros seleccionados (búsqueda, estrellas y orden) a la lista original de platos. */
     private fun applyFiltersAndSort() {
         var filteredList = allPlatos.filter { item ->
             val matchesRestaurant = item.nombreRestaurante.contains(restaurantQuery, ignoreCase = true)

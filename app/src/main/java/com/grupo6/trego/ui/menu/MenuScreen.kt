@@ -65,6 +65,12 @@ import com.grupo6.trego.ui.theme.TregoSecondary
 import com.grupo6.trego.ui.theme.onCancelar
 import org.koin.androidx.compose.koinViewModel
 
+/**
+ * Esta es la pantalla de la carta del restaurante. Aquí el usuario puede navegar por 
+ * las categorías, ver las ofertas destacadas y leer las opiniones de otros clientes. 
+ * El diseño está pensado para que los platos se vean claros y sea fácil agregarlos 
+ * al carrito.
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MenuScreen(
@@ -82,6 +88,7 @@ fun MenuScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
+    /* Escuchamos los eventos del ViewModel, como abrir el detalle de un producto o mostrar avisos. */
     LaunchedEffect(Unit) {
         menuViewModel.uiEvent.collect { event ->
             when (event) {
@@ -174,6 +181,7 @@ fun MenuScreen(
                         )
                     }
 
+                    /* Sección de ofertas: una lista horizontal con los platos que tienen descuento activo. */
                     if (state.ofertas.isNotEmpty()) {
                         item {
                             Spacer(Modifier.height(16.dp))
@@ -209,6 +217,7 @@ fun MenuScreen(
                         }
                     }
 
+                    /* Barra de filtros pegajosa que permite elegir la categoría y subcategoría sin perder el menú de vista. */
                     stickyHeader {
                         Surface(
                             color = Color.White,
@@ -308,6 +317,7 @@ fun MenuScreen(
                         )
                     }
 
+                    /* Listado principal de productos agrupados por su categoría y subcategoría. */
                     if (state.productosFiltrados.isEmpty()) {
                         item {
                             Box(
@@ -450,6 +460,7 @@ fun MenuScreen(
                         }
                     }
 
+                    /* Sección de opiniones donde mostramos el puntaje promedio y cada reseña individual. */
                     item {
                         ResenasHeader(
                             resenas = state.resenas,

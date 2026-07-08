@@ -1,6 +1,5 @@
 package com.grupo6.trego.ui.auth
 
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.AlertDialog
@@ -18,8 +18,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
@@ -86,7 +85,7 @@ fun FormInicio(
     }
 
     fun registrarUsuarioGoogle() {
-        val TAG = "GoogleAuthDebug" // 👈 Etiqueta para filtrar en el Logcat
+        val TAG = "GoogleAuthDebug"
 
         if (!isLoading) {
             isLoading = true
@@ -99,7 +98,6 @@ fun FormInicio(
                     // 1er intento: cuentas ya autorizadas en el dispositivo (bottom sheet rápido).
                     // Evita el "dispositivo no válido" cuando ya hay una cuenta vinculada.
                     val result: GetCredentialResponse = try {
-                        Log.d(TAG, "🟢 1. Abriendo selector con cuentas autorizadas...")
                         val authorizedOption = GetGoogleIdOption.Builder()
                             .setFilterByAuthorizedAccounts(true)
                             .setServerClientId(serverClientId)
@@ -113,7 +111,6 @@ fun FormInicio(
                         )
                     } catch (e: NoCredentialException) {
                         // Fallback: botón "Sign in with Google", muestra TODAS las cuentas.
-                        Log.d(TAG, "🟡 Sin cuentas autorizadas, usando GetSignInWithGoogleOption")
                         val signInOption = GetSignInWithGoogleOption.Builder(serverClientId).build()
                         credentialManager.getCredential(
                             context = context,
@@ -123,16 +120,12 @@ fun FormInicio(
                         )
                     }
 
-                    val googleCredential = GoogleIdTokenCredential.createFrom(result.credential.data)
+                    val googleCredential =
+                        GoogleIdTokenCredential.createFrom(result.credential.data)
 
-                    // 🔍 LOG 1: Verificamos si Google nos dio su token inicial (IdToken)
-                    Log.d(TAG, "✅ 2. ¡Google obtuvo el Token con éxito!")
-                    Log.d(TAG, "   👉 Correo del usuario: ${googleCredential.id}")
-                    Log.d(TAG, "   👉 Google IdToken (primeros 30 caracteres): ${googleCredential.idToken.take(30)}...")
+                    val firebaseCredential =
+                        GoogleAuthProvider.getCredential(googleCredential.idToken, null)
 
-                    val firebaseCredential = GoogleAuthProvider.getCredential(googleCredential.idToken, null)
-
-                    Log.d(TAG, "🔄 3. Iniciando sesión en Firebase con la credencial de Google...")
                     val authResult = auth.signInWithCredential(firebaseCredential).await()
 
                     if (authResult.user != null) {
@@ -141,43 +134,33 @@ fun FormInicio(
 
                         if (firebaseTokenString != null) {
 
-                            // 🔍 LOG 2: Este es el token que viaja a tu backend
-                            Log.d(TAG, "🚀 4. ¡Token de Firebase generado listo para enviar al Backend!")
-                            Log.d(TAG, "   👉 Token Completo (Cópialo si lo necesitas para Postman):")
-                            Log.d(TAG, "   👉 $firebaseTokenString")
-
                             viewModel.sendGoogleTokenToBackend(
                                 idToken = firebaseTokenString,
                                 onSuccess = {
-                                    Log.d(TAG, "🎉 5. El Backend respondió EXITOSAMENTE. Logueado.");
                                     isLoading = false
                                     onLoginSuccess()
                                 },
                                 onError = { mensajeError ->
-                                    Log.e(TAG, "❌ Fallo en la respuesta del Backend: $mensajeError")
                                     isLoading = false
-                                    errorMessage = "El servidor no reconoció tu cuenta: $mensajeError"
+                                    errorMessage =
+                                        "El servidor no reconoció tu cuenta: $mensajeError"
                                     auth.signOut()
                                 }
                             )
                         } else {
-                            Log.e(TAG, "❌ El token string de Firebase vino nulo")
                             isLoading = false
                         }
                     }
 
                 } catch (e: NoCredentialException) {
                     // El usuario llego al selector pero Google NO emitio token.
-                    Log.e(TAG, "❌ NoCredentialException (revisar SHA-1 en Firebase): ${e.message}", e)
                     errorMessage = "Google no pudo validar la app. Verificá que el SHA-1 de la " +
                             "firma esté registrado en Firebase."
                 } catch (e: GetCredentialException) {
-                    Log.e(TAG, "❌ ${e.javaClass.simpleName} - type=${e.type} - ${e.message}", e)
                     errorMessage = "Error de Google (${e.javaClass.simpleName}): ${e.message}"
                 } catch (e: Exception) {
-                    // 🔍 LOG 3: Si el selector de Google se cae o se cierra solo, saltará aquí
-                    Log.e(TAG, "❌ ERROR CRÍTICO en el proceso de Autenticación: ${e.message}", e)
-                    errorMessage = "Error de conexión: ${e.localizedMessage ?: "No se pudo conectar con Google"}"
+                    errorMessage =
+                        "Error de conexión: ${e.localizedMessage ?: "No se pudo conectar con Google"}"
                 } finally {
                     isLoading = false
                 }
@@ -187,7 +170,7 @@ fun FormInicio(
 
     Column(
         modifier = Modifier
-            .padding(16.dp), // Un poco más de aire
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -196,14 +179,14 @@ fun FormInicio(
         Text(
             text = "Lo Pedis, Trego!",
             style = MaterialTheme.typography.displaySmall,
-            color = Color.Black // Texto en negro para que resalte
+            color = Color.Black
         )
 
         Spacer(modifier = Modifier.height(26.dp))
 
         Image(
-            painter = painterResource(id = R.drawable.bolsa), // 'R.drawable.nombre_archivo'
-            contentDescription = "Logo de la aplicación Trego", // Importante para accesibilidad (alt text)
+            painter = painterResource(id = R.drawable.bolsa),
+            contentDescription = "Logo de la aplicación Trego",
             modifier = Modifier
                 .size(250.dp)
         )

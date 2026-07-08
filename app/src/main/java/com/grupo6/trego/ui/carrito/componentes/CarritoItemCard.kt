@@ -2,13 +2,29 @@ package com.grupo6.trego.ui.carrito.componentes
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +42,11 @@ import com.grupo6.trego.data.utilities.ensureCloudinaryTransformation
 import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 
+/**
+ * Esta tarjeta representa un producto dentro de la lista del carrito. Muestra la 
+ * imagen, el nombre, los ingredientes que se sacaron y permite al usuario ajustar 
+ * la cantidad o borrar el producto si se arrepintió.
+ */
 @Composable
 fun CarritoItemCard(
     item: DTOProductoPedido,
@@ -49,7 +70,7 @@ fun CarritoItemCard(
             verticalAlignment = Alignment.Top
         ) {
 
-            // Imagen
+            /* Mostramos la imagen del producto con un retoque automático para que se vea bien en el carrito. */
             if (item.producto?.urlImagen != null) {
                 AsyncImage(
                     model = item.producto.urlImagen.ensureCloudinaryTransformation("w_200,h_200,c_fill,g_auto"),
@@ -106,7 +127,7 @@ fun CarritoItemCard(
                     }
                 }
 
-                // Ingredientes quitados
+                /* Si el usuario pidió sacar algún ingrediente, lo mostramos acá con unas etiquetas naranjas. */
                 if (item.ingredientesAQuitar?.isNotEmpty() == true) {
                     Spacer(Modifier.height(4.dp))
                     FlowRow(
@@ -150,7 +171,7 @@ fun CarritoItemCard(
 
                 Spacer(Modifier.height(8.dp))
 
-                // Cantidad + subtotal + eliminar
+                /* Controles para sumar o restar unidades y el botón para quitar el producto del carrito. */
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,

@@ -6,6 +6,10 @@ import com.grupo6.trego.data.model.DTOUsuario
 import com.grupo6.trego.data.model.FcmTokenRequest
 import com.grupo6.trego.data.remote.UsuarioApiService
 
+/**
+ * Este repositorio maneja los datos personales del usuario, sus direcciones guardadas 
+ * y la actualización del token para las notificaciones push.
+ */
 class UsuarioRepository(private val api: UsuarioApiService) {
 
     suspend fun verPerfil(): Result<DTOUsuario> {

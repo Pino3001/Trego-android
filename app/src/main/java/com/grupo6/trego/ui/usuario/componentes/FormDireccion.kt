@@ -28,6 +28,10 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -63,7 +68,15 @@ import com.grupo6.trego.data.utilities.reverseGeocode
 import com.grupo6.trego.ui.componentes.TregoHeader
 import com.grupo6.trego.ui.theme.TregoOrange
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
+/**
+ * Este es el formulario detallado para agregar o editar una dirección. Permite 
+ * buscar la calle por texto con autocompletado, usar el botón de GPS para 
+ * detectar la ubicación exacta y rellenar los campos de número, apartamento 
+ * y esquina de forma manual.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DireccionForm(
     direccion: DTODireccion?,
@@ -91,6 +104,7 @@ fun DireccionForm(
     var apartamento by remember { mutableStateOf(dir.apartamento ?: "") }
     var latitud by remember { mutableStateOf(dir.latitud) }
     var longitud by remember { mutableStateOf(dir.longitud) }
+    val focusManager = LocalFocusManager.current
 
     // ── La clave del fix: LaunchedEffect se suscribe a la VERSIÓN, no al valor ──
     // Solo el usuario incrementa la versión al tipear → los cambios programáticos
@@ -134,6 +148,7 @@ fun DireccionForm(
         }
     }
 
+    /* Cuando el usuario toca el botón de GPS, este bloque se encarga de convertir las coordenadas en una dirección real para autocompletar el formulario. */
     LaunchedEffect(locationState) {
         when (val state = locationState) {
             is LocationState.Available -> {
@@ -144,7 +159,6 @@ fun DireccionForm(
                     numero = dto.numero ?: ""
                     latitud = dto.latitud
                     longitud = dto.longitud
-                    // SIN searchVersion++ → no dispara búsqueda, solo actualiza display
                     searchQuery = listOfNotNull(
                         dto.calle,
                         dto.numero?.takeIf { it.isNotBlank() }
@@ -169,11 +183,11 @@ fun DireccionForm(
         }
     }
 
-    // Keyed en searchVersion, no en searchQuery
+    /* Este buscador inteligente sugiere direcciones reales mientras el usuario escribe, usando el servicio de Geoapify para que sea más fácil elegir la ubicación. */
     LaunchedEffect(searchVersion) {
         if (searchVersion == 0) return@LaunchedEffect
         if (searchQuery.length >= 3) {
-            delay(400L)
+            delay(250L.milliseconds)
             buscando = true
             resultados = autocompletarDireccion(searchQuery)
             mostrarResultados = resultados.isNotEmpty()
@@ -187,7 +201,7 @@ fun DireccionForm(
     LaunchedEffect(esquinaVersion) {
         if (esquinaVersion == 0) return@LaunchedEffect
         if (esquina.length >= 3) {
-            delay(400L)
+            delay(250L.milliseconds)
             buscandoEsquina = true
             resultadosEsquina = autocompletarDireccion(esquina)
             mostrarResultadosEsquina = resultadosEsquina.isNotEmpty()
@@ -199,11 +213,14 @@ fun DireccionForm(
     }
 
     fun aplicarResultado(r: ResultadoGeoapify) {
-        calle = r.calle ?: ""; numero = r.numero ?: ""
-        latitud = r.latitud; longitud = r.longitud
-        searchQuery = r.descripcion   // SIN searchVersion++ → el LaunchedEffect no se reinicia
+        calle = r.calle ?: ""
+        numero = r.numero ?: ""
+        latitud = r.latitud
+        longitud = r.longitud
+        searchQuery = r.descripcion
         mostrarResultados = false
         resultados = emptyList()
+        focusManager.clearFocus()
     }
 
     fun aplicarResultadoEsquina(r: ResultadoGeoapify) {
@@ -273,6 +290,7 @@ fun DireccionForm(
                         imeAction = ImeAction.Next
                     )
                 )
+                /* Un botón rápido para activar el GPS y detectar automáticamente dónde está parado el usuario en este momento. */
                 Surface(
                     modifier = Modifier
                         .size(56.dp)
@@ -310,7 +328,9 @@ fun DireccionForm(
             }
 
             // Buscador principal
-            Box(
+            ExposedDropdownMenuBox(
+                expanded = mostrarResultados,
+                onExpandedChange = { mostrarResultados = it },
                 modifier = Modifier
                     .fillMaxWidth()
                     .zIndex(2f)
@@ -319,11 +339,17 @@ fun DireccionForm(
                     value = searchQuery,
                     onValueChange = {
                         searchQuery = it
-                        searchVersion++   // ← solo el usuario toca esto
+                        searchVersion++
                     },
                     label = { Text("Buscar calle y número") },
                     placeholder = { Text("Ej: 18 de Julio 1234") },
-                    modifier = Modifier.fillMaxWidth(),
+                    // El menuAnchor va aquí, en el ÚNICO campo de texto
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(
+                            type = ExposedDropdownMenuAnchorType.PrimaryEditable,
+                            enabled = true
+                        ),
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
@@ -354,22 +380,18 @@ fun DireccionForm(
                         }
                     } else null
                 )
-                if (mostrarResultados) {
-                    Surface(
-                        modifier = Modifier
-                            .padding(top = 62.dp)
-                            .fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, Color.LightGray),
-                        shadowElevation = 8.dp, color = Color.White
-                    ) {
-                        Column {
-                            resultados.take(5).forEachIndexed { idx, r ->
+
+                // El menú solo se muestra si expanded es true
+                ExposedDropdownMenu(
+                    expanded = mostrarResultados,
+                    onDismissRequest = { mostrarResultados = false },
+                    modifier = Modifier.background(Color.White)
+                ) {
+                    resultados.take(5).forEachIndexed { idx, r ->
+                        DropdownMenuItem(
+                            text = {
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { aplicarResultado(r) }
-                                        .padding(14.dp),
+                                    modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -392,9 +414,10 @@ fun DireccionForm(
                                         )
                                     }
                                 }
-                                if (idx < resultados.take(5).lastIndex) HorizontalDivider(thickness = 0.5.dp)
-                            }
-                        }
+                            },
+                            onClick = { aplicarResultado(r) }
+                        )
+                        if (idx < resultados.take(5).lastIndex) HorizontalDivider(thickness = 0.5.dp)
                     }
                 }
             }
@@ -424,7 +447,9 @@ fun DireccionForm(
             }
 
             // Buscador esquina
-            Box(
+            ExposedDropdownMenuBox(
+                expanded = mostrarResultadosEsquina,
+                onExpandedChange = { mostrarResultadosEsquina = it },
                 modifier = Modifier
                     .fillMaxWidth()
                     .zIndex(1f)
@@ -433,10 +458,15 @@ fun DireccionForm(
                     value = esquina,
                     onValueChange = {
                         esquina = it
-                        esquinaVersion++   // ← solo el usuario toca esto
+                        esquinaVersion++
                     },
                     label = { Text("Esquina (Opcional)") },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(
+                            type = ExposedDropdownMenuAnchorType.PrimaryEditable,
+                            enabled = true
+                        ),
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
@@ -467,22 +497,17 @@ fun DireccionForm(
                         }
                     } else null
                 )
-                if (mostrarResultadosEsquina) {
-                    Surface(
-                        modifier = Modifier
-                            .padding(top = 62.dp)
-                            .fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, Color.LightGray),
-                        shadowElevation = 8.dp, color = Color.White
-                    ) {
-                        Column {
-                            resultadosEsquina.take(3).forEachIndexed { idx, r ->
+
+                ExposedDropdownMenu(
+                    expanded = mostrarResultadosEsquina,
+                    onDismissRequest = { mostrarResultadosEsquina = false },
+                    modifier = Modifier.background(Color.White)
+                ) {
+                    resultadosEsquina.take(3).forEachIndexed { idx, r ->
+                        DropdownMenuItem(
+                            text = {
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { aplicarResultadoEsquina(r) }
-                                        .padding(14.dp),
+                                    modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -498,11 +523,10 @@ fun DireccionForm(
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
-                                if (idx < resultadosEsquina.take(3).lastIndex) HorizontalDivider(
-                                    thickness = 0.5.dp
-                                )
-                            }
-                        }
+                            },
+                            onClick = { aplicarResultadoEsquina(r) }
+                        )
+                        if (idx < resultadosEsquina.take(3).lastIndex) HorizontalDivider(thickness = 0.5.dp)
                     }
                 }
             }

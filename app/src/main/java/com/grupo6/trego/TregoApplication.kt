@@ -15,6 +15,11 @@ import com.grupo6.trego.di.appModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 
+/**
+ * Esta es la clase base de la aplicación donde configuramos las herramientas globales. 
+ * Acá inicializamos la inyección de dependencias con Koin, configuramos el cargador 
+ * de imágenes y creamos los canales de notificaciones apenas arranca la app.
+ */
 class TregoApplication : Application(), ImageLoaderFactory {
 
     override fun onCreate() {
@@ -28,7 +33,7 @@ class TregoApplication : Application(), ImageLoaderFactory {
         createNotificationChannel()
     }
 
-    // Función para crear el Notification Channel
+    /* Creamos el canal de notificaciones necesario para que los avisos del servidor se muestren correctamente en el celular. */
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channelId = "trego_default_channel" // Este ID es importante
@@ -64,6 +69,7 @@ class TregoApplication : Application(), ImageLoaderFactory {
         }
     }
 
+    /* Configuramos cómo se cargan las fotos en la app, agregando soporte para SVGs y manejando la memoria caché para que todo ande más rápido. */
     override fun newImageLoader(): ImageLoader {
         return ImageLoader.Builder(this)
             .components {

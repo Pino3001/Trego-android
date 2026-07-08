@@ -23,6 +23,11 @@ import com.grupo6.trego.data.model.DTOSubCategoria
 import com.grupo6.trego.data.utilities.ensureCloudinaryTransformation
 import com.grupo6.trego.ui.theme.BlancoCard
 
+/**
+ * Esta tarjeta representa una subcategoría (como "Hamburguesas" o "Pizzas") en 
+ * la lista general. Es compacta, muestra una imagen representativa y el nombre 
+ * debajo, diseñada para que el usuario pueda identificar rápido lo que busca.
+ */
 @Composable
 fun CardSubcategoria(
     subCategoria: DTOSubCategoria,

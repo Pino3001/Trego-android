@@ -22,6 +22,11 @@ import com.grupo6.trego.ui.theme.TregoOrange
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+/**
+ * Esta tarjeta muestra una reseña individual dejada por un usuario. Incluye sus 
+ * iniciales en un círculo, la fecha, la calificación con estrellas y el comentario 
+ * que escribió sobre su experiencia.
+ */
 @Composable
 fun ResenaCard(resena: DTOComentario) {
     val iniciales = resena.nombreCliente

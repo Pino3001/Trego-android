@@ -13,20 +13,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.google.firebase.auth.FirebaseAuth
+import com.grupo6.trego.data.model.NavigationTarget
 import com.grupo6.trego.data.utilities.AppReadyState
 import com.grupo6.trego.ui.theme.TregoTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 
+/**
+ * Esta es la actividad principal y el punto de entrada de la aplicación. 
+ * Se encarga de mostrar el splash screen, pedir los permisos de notificaciones 
+ * y procesar cualquier dato que venga de afuera, como los deep links de pagos 
+ * o los avisos de Firebase.
+ */
 class MainActivity : ComponentActivity() {
 
     val pendingPaymentStatus = MutableStateFlow<String?>(null)
-    val navigateToOrders = MutableStateFlow(false)
+    val navigationTarget = MutableStateFlow<NavigationTarget?>(null)
 
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         val startTime = System.currentTimeMillis()
 
+        /* Configuramos el Splash Screen para que se quede visible hasta que los datos iniciales de la app estén listos para el usuario. */
         splashScreen.setKeepOnScreenCondition {
             val user = FirebaseAuth.getInstance().currentUser
             val elapsed = System.currentTimeMillis() - startTime
@@ -42,7 +50,7 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
 
-        // Pedir permiso de notificaciones
+        /* Pedimos permiso para mandar notificaciones en las versiones de Android que lo requieren obligatoriamente. */
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val launcher = registerForActivityResult(
                 ActivityResultContracts.RequestPermission()
@@ -54,7 +62,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             TregoTheme {
-                AppNavigation(pendingPaymentStatus, navigateToOrders)
+                AppNavigation(pendingPaymentStatus, navigationTarget)
             }
         }
 
@@ -69,7 +77,7 @@ class MainActivity : ComponentActivity() {
         handleNotificationIntent(intent)
     }
 
-    // Fuera de onCreate, como miembro privado de la clase
+    /* Analizamos la URL que viene de Mercado Pago para saber si el pago se completó bien o si hubo algún problema. */
     private fun handleDeepLink(intent: Intent?) {
         val uri = intent?.data ?: return
         if (uri.scheme == "trego" && uri.host == "pago") {
@@ -79,19 +87,24 @@ class MainActivity : ComponentActivity() {
                 pendingPaymentStatus.value = status
             }
         }
+        intent.data = null
     }
 
+    /* Cuando el usuario toca una notificación, miramos qué estado trae para mandarlo directo a la pantalla que corresponde. */
     private fun handleNotificationIntent(currentIntent: Intent?) {
         currentIntent?.let {
             if (it.hasExtra("estado")) {
                 val estado = it.getStringExtra("estado")
 
+                Log.e("estados", estado.toString())
                 if (estado == "PAGO_PROCESADO") {
-                    navigateToOrders.value = true
+                    navigationTarget.value = NavigationTarget.PAGO_REALIZADO
                 }
-
-                // PREVENCIÓN DE BUGS: Borrar el extra evita que al rotar
-                // el teléfono se vuelva a disparar la redirección.
+                else if (estado == "Reembolsado" || estado == "Resuelto") {
+                    navigationTarget.value = NavigationTarget.HISTORIAL
+                } else {
+                    navigationTarget.value = NavigationTarget.PEDIDO
+                }
                 it.removeExtra("estado")
             }
         }

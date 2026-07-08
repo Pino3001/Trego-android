@@ -7,6 +7,11 @@ import com.google.firebase.ktx.Firebase
 import okhttp3.Interceptor
 import okhttp3.Response
 
+/**
+ * Este interceptor es como un guardia de seguridad para nuestras peticiones al servidor.
+ * Se encarga de poner el token de usuario en cada llamada y, si detecta que la sesión 
+ * venció, limpia todo y manda al usuario de vuelta al inicio.
+ */
 class AuthInterceptor(
     private val context: Context,
     private val tokenManager: TokenManager
@@ -24,16 +29,16 @@ class AuthInterceptor(
 
         val response = chain.proceed(requestBuilder.build())
 
-        // 1. Obtenemos la ruta en minúsculas
+        // Obtenemos la ruta en minúsculas
         val path = originalRequest.url.encodedPath.lowercase()
 
-        // 2. Protegemos las rutas EXACTAS de tu backend basándonos en tu AuthController
+        // Protegemos las rutas EXACTAS de tu backend basándonos en tu AuthController
         val isAuthRoute = path.contains("/api/auth/google") ||
                 path.contains("/api/auth/sms") ||
                 path.contains("/api/auth/registro") ||
                 path.contains("/api/auth/vincular")
 
-        // 3. Atrapamos el 401 y 403 SOLO si no estamos intentando iniciar sesión/registrarnos
+        // Atrapamos el 401 y 403 SOLO si no estamos intentando iniciar sesión/registrarnos
         if ((response.code == 401 || response.code == 403) && !isAuthRoute) {
 
             if (!token.isNullOrEmpty()) {

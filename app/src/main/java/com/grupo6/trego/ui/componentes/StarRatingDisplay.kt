@@ -14,6 +14,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.grupo6.trego.ui.theme.TregoOrange
 
+/**
+ * Este componente solo sirve para mostrar una calificación con estrellas de 
+ * forma visual. No se puede interactuar con él, es solo para lectura en las 
+ * tarjetas o cabezales.
+ */
 @Composable
 fun StarRatingDisplay(
     rating: Int,

@@ -46,6 +46,12 @@ import com.grupo6.trego.ui.theme.PurpleGrey40
 
 private val AmberStar = Color(0xFFEF9F27)
 
+/**
+ * Esta tarjeta representa un plato individual en los feeds generales. Muestra una 
+ * imagen atractiva, el precio, la descripción y también información clave del 
+ * restaurante, como su nombre, calificación y dirección, para que el usuario 
+ * sepa de dónde viene lo que está viendo.
+ */
 @Composable
 fun CardPlato(
     productoZona: DTOProductoZona,
@@ -73,7 +79,7 @@ fun CardPlato(
         border = BorderStroke(width = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column {
-            // ── 1. IMAGEN CON PRECIO FLOTANTE (0 Height extra) ──
+            /* Parte superior con la foto de la comida y el precio destacado en una esquina. */
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -144,7 +150,7 @@ fun CardPlato(
                 ), color = MaterialTheme.colorScheme.outlineVariant
             )
 
-            // ── 3. INFO DEL RESTAURANTE ──
+            /* Información técnica: el nombre del restaurante, su puntaje y su ubicación exacta. */
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

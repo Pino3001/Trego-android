@@ -97,6 +97,11 @@ private val estadosPedido = listOf(
 private fun estadoIndex(estado: EnumEstadoPedido?): Int =
     estadosPedido.indexOf(estado).takeIf { it >= 0 } ?: 0
 
+/**
+ * Esta tarjeta muestra toda la información de un pedido que está "vivo". 
+ * Incluye un rastreador de pasos para ver si ya se está preparando o si viene en camino, 
+ * permite llamar al restaurante directamente y ofrece la opción de cancelar o reclamar.
+ */
 @Composable
 fun ActivePedidoCard(
     order: PedidoUiModel,
@@ -121,7 +126,7 @@ fun ActivePedidoCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
 
-            // --- Header: nombre + botón ícono de teléfono ---
+            /* Cabezal de la tarjeta con el nombre del restaurante y el botón rápido para llamar por teléfono. */
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -166,7 +171,7 @@ fun ActivePedidoCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- Progress Stepper ---
+            /* Dibujamos la línea de tiempo que muestra en qué etapa está el pedido actualmente. */
             OrderProgressStepper(currentStep = currentStep)
 
             // --- Divisor ---
@@ -294,136 +299,162 @@ fun ActivePedidoCard(
                 }
             }
 
-            // --- Sección de reclamo ---
+            /* Sección donde el usuario puede escribir y mandar un mensaje al restaurante si hay un problema. */
             if (puedeReclamar) {
                 HorizontalDivider(
                     modifier = Modifier.padding(top = 10.dp),
                     color = Color(0xFFEBEBEB)
                 )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { reclamar = !reclamar }
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                // AQUI USAMOS EL NUEVO CAMPO DEL BACKEND
+                if (order.pedido.tieneReclamo == true) {
+                    // Ya tiene reclamo -> Mostramos el mensaje de éxito
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Flag,
-                            contentDescription = null,
-                            tint = TregoSecondary,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            "Enviar reclamo",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TregoSecondary
-                        )
-                    }
-                    Icon(
-                        if (reclamar) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (reclamar) "Cerrar" else "Abrir reclamo",
-                        tint = TregoSecondary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-
-                AnimatedVisibility(
-                    visible = reclamar,
-                    enter = expandVertically() + fadeIn(initialAlpha = 0.3f),
-                    exit = shrinkVertically() + fadeOut()
-                ) {
-                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color(0xFFFAFAFA))
-                            .padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        OutlinedTextField(
-                            value = reclamoTexto,
-                            onValueChange = { if (it.length <= maxChars) reclamoTexto = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = {
-                                Text(
-                                    "Describe el problema con tu pedido...",
-                                    fontSize = 12.sp,
-                                    color = Color.Gray
-                                )
-                            },
-                            minLines = 3,
-                            maxLines = 5,
-                            shape = RoundedCornerShape(12.dp),
-                            textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = TregoSecondary,
-                                unfocusedBorderColor = Color(0xFFE0E0E0),
-                                cursorColor = TregoSecondary,
-                            ),
-                            supportingText = {
-                                Text(
-                                    "${reclamoTexto.length} / $maxChars",
-                                    modifier = Modifier.fillMaxWidth(),
-                                    textAlign = TextAlign.End,
-                                    fontSize = 11.sp,
-                                    color = if (reclamoTexto.length > maxChars * 0.85)
-                                        TregoSecondary else Color.Gray
-                                )
-                            }
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = null,
+                            tint = Color(0xFF2E7D32),
+                            modifier = Modifier.size(16.dp)
                         )
-
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Reclamo en proceso",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF2E7D32)
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { reclamar = !reclamar }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            OutlinedButton(
-                                onClick = {
-                                    if (reclamoTexto.isNotBlank()) {
-                                        mostrarConfirmarCancelReclamo = true
-                                    } else {
-                                        reclamar = false
-                                        reclamoTexto = ""
-                                    }
-                                },
-                                shape = RoundedCornerShape(50),
-                                border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = Color.Gray
-                                )
-                            ) {
-                                Text("Cancelar", fontSize = 12.sp)
-                            }
+                            Icon(
+                                Icons.Default.Flag,
+                                contentDescription = null,
+                                tint = TregoSecondary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                "Enviar reclamo",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = TregoSecondary
+                            )
+                        }
+                        Icon(
+                            if (reclamar) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (reclamar) "Cerrar" else "Abrir reclamo",
+                            tint = TregoSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
 
-                            Button(
-                                onClick = {
-                                    val reclamo = DTOCrearReclamoRequest(
-                                        idPedido = order.pedido.idPedido,
-                                        texto = reclamoTexto
+                    AnimatedVisibility(
+                        visible = reclamar,
+                        enter = expandVertically() + fadeIn(initialAlpha = 0.3f),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFFFAFAFA))
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = reclamoTexto,
+                                onValueChange = { if (it.length <= maxChars) reclamoTexto = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = {
+                                    Text(
+                                        "Describe el problema con tu pedido...",
+                                        fontSize = 12.sp,
+                                        color = Color.Gray
                                     )
-                                    onClickReclamo(reclamo) {
-                                        reclamar = false
-                                        reclamoTexto = ""
-                                    }
                                 },
-                                enabled = reclamoTexto.isNotBlank(),
-                                shape = RoundedCornerShape(50),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = TregoSecondary,
-                                    disabledContainerColor = TregoSecondary.copy(alpha = 0.35f)
-                                )
+                                minLines = 3,
+                                maxLines = 5,
+                                shape = RoundedCornerShape(12.dp),
+                                textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = TregoSecondary,
+                                    unfocusedBorderColor = Color(0xFFE0E0E0),
+                                    cursorColor = TregoSecondary,
+                                ),
+                                supportingText = {
+                                    Text(
+                                        "${reclamoTexto.length} / $maxChars",
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textAlign = TextAlign.End,
+                                        fontSize = 11.sp,
+                                        color = if (reclamoTexto.length > maxChars * 0.85)
+                                            TregoSecondary else Color.Gray
+                                    )
+                                }
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
                             ) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.Send,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Enviar", fontSize = 12.sp)
+                                OutlinedButton(
+                                    onClick = {
+                                        if (reclamoTexto.isNotBlank()) {
+                                            mostrarConfirmarCancelReclamo = true
+                                        } else {
+                                            reclamar = false
+                                            reclamoTexto = ""
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(50),
+                                    border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = Color.Gray
+                                    )
+                                ) {
+                                    Text("Cancelar", fontSize = 12.sp)
+                                }
+
+                                Button(
+                                    onClick = {
+                                        val reclamo = DTOCrearReclamoRequest(
+                                            idPedido = order.pedido.idPedido,
+                                            texto = reclamoTexto
+                                        )
+                                        onClickReclamo(reclamo) {
+                                            reclamar = false
+                                            reclamoTexto = ""
+                                        }
+                                    },
+                                    enabled = reclamoTexto.isNotBlank(),
+                                    shape = RoundedCornerShape(50),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = TregoSecondary,
+                                        disabledContainerColor = TregoSecondary.copy(alpha = 0.35f)
+                                    )
+                                ) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.Send,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Enviar", fontSize = 12.sp)
+                                }
                             }
                         }
                     }

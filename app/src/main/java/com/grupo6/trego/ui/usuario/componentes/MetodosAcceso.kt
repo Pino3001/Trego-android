@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -30,14 +32,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import com.grupo6.trego.data.model.DTOUsuario
 import com.grupo6.trego.ui.theme.TregoOrange
 import com.grupo6.trego.ui.usuario.MetodosAccesoViewModel
 import com.grupo6.trego.ui.usuario.SmsLinkStep
 import org.koin.androidx.compose.koinViewModel
 
+/**
+ * Este componente agrupa las opciones para que el usuario vincule su cuenta. 
+ * Muestra si ya tiene Google o su teléfono asociados y, si no, despliega 
+ * los formularios necesarios para realizar la vinculación por SMS o por 
+ * la cuenta de Google directamente.
+ */
 @Composable
 fun MetodosAcceso(
     usuario: DTOUsuario,
@@ -77,6 +83,7 @@ fun MetodosAcceso(
             )
         }
 
+        /* Fila dedicada a la vinculación con Google. Si ya está listo, muestra el email asociado. */
         FilaMetodo(
             titulo = "Google",
             detalle = if (googleVinculado) usuario.email!! else "Sin vincular",
@@ -95,6 +102,7 @@ fun MetodosAcceso(
             border = BorderStroke(1.dp, Color(0xFFE0E0E0))
         ) {
             Column(modifier = Modifier.padding(4.dp)) {
+                /* Sección para el teléfono. Si no está vinculado, muestra el flujo de ingreso de número y después el de código SMS. */
                 FilaMetodo(
                     titulo = "Teléfono",
                     detalle = if (smsVinculado) usuario.telefono!! else "Sin vincular",
@@ -113,14 +121,17 @@ fun MetodosAcceso(
                             placeholder = { Text("+598 99 000 000") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                             singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
                         )
                         Spacer(Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
                                 onClick = { vm.enviarCodigoSms(activity) { onVinculado() } },
                                 enabled = vm.phoneNumber.isNotBlank() && !vm.isLoading,
-                                modifier = Modifier.weight(1f).height(46.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(46.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = TregoOrange),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
@@ -152,14 +163,17 @@ fun MetodosAcceso(
                             label = { Text("Código de verificación") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                             singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
                         )
                         Spacer(Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
                                 onClick = { vm.confirmarCodigoSms { onVinculado() } },
                                 enabled = vm.otpCode.length == 6 && !vm.isLoading,
-                                modifier = Modifier.weight(1f).height(46.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(46.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = TregoOrange),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
@@ -217,6 +231,7 @@ private fun FilaMetodo(
                 Spacer(Modifier.width(6.dp))
                 Text("Vinculado", color = Color(0xFF2E7D32), fontSize = 13.sp)
             }
+
             mostrarBoton -> {
                 TextButton(onClick = onVincular, enabled = !cargando) {
                     Text("Vincular", color = TregoOrange, fontWeight = FontWeight.Bold)
