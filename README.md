@@ -239,8 +239,13 @@ El proyecto tuvo como objetivo diseñar e implementar una plataforma de pedidos 
 **Grupo 6 - Proyecto Final**
 
 - Alexis La Cruz
-- Integrantes del Grupo 6
-
+- Ezequiel Medina
+- Maikol Brion
+- Dámaso Tor
+- Horacio Duarte
+- Nicolas Fernandez
+- Cristian Gonzalez
+- Mateo Sparano
 ---
 
 ## 📄 Licencia
