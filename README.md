@@ -10,7 +10,7 @@ TREGO permite a los clientes descubrir restaurantes cercanos, explorar sus produ
 
 - 🔐 Autenticación mediante Google o SMS utilizando Firebase Authentication.
 - 🍔 Exploración de restaurantes por ubicación, nombre y categoría.
-- 📋 Visualización de cartas, platos, artículos, combos y ofertas.
+- 📋 Visualización de platos, artículos, combos y ofertas.
 - 🛒 Gestión completa del carrito de compras.
 - 💳 Pago integrado mediante Mercado Pago.
 - 📍 Administración de múltiples direcciones de entrega con autocompletado.
@@ -186,15 +186,13 @@ Sincronizar el proyecto con Gradle y ejecutar la aplicación desde Android Studi
 
 ## 📸 Capturas de Pantalla
 
-> Agregar aquí imágenes de la aplicación.
-
-| Inicio | Restaurante | Carrito |
+| Inicio | Restaurantes | Menú|
 |---------|------------|----------|
-| Imagen | Imagen | Imagen |
+|<img width="246" height="533" alt="image" src="https://github.com/user-attachments/assets/956d78dc-d0cc-41e2-8315-53b1b2d0e0bf" /> | <img width="246" height="533" alt="image" src="https://github.com/user-attachments/assets/168afd1f-19ac-4d96-a800-65d165d767b6" /> | <img width="246" height="533" alt="image" src="https://github.com/user-attachments/assets/03d7f7c1-bbc3-457e-a19a-c50f6a01f995" /> |
 
-| Pedido | Perfil | Menú |
+| Pedido | Perfil | Carrito |
 |---------|---------|------|
-| Imagen | Imagen | Imagen |
+| <img width="246" height="533" alt="image" src="https://github.com/user-attachments/assets/4b068ed8-61d2-4cd0-a99e-57fe592b68e3" /> | <img width="246" height="533" alt="image" src="https://github.com/user-attachments/assets/1b21d71b-cf54-4865-8ad2-13b2bb95ad93" /> | <img width="246" height="533" alt="image" src="https://github.com/user-attachments/assets/c919cb3e-b8f5-47d8-8a71-18e01b9a8ac3" /> |
 
 ---
 
