@@ -78,12 +78,14 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.grupo6.trego.R
 import com.grupo6.trego.data.model.DTOUsuario
+import com.grupo6.trego.data.utilities.TokenManager
 import com.grupo6.trego.ui.componentes.TregoHeader
 import com.grupo6.trego.ui.componentes.VistaError
 import com.grupo6.trego.ui.theme.TregoOrange
 import com.grupo6.trego.ui.usuario.componentes.DireccionGestion
 import com.grupo6.trego.ui.usuario.componentes.MetodosAcceso
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 /**
  * Esta es la pantalla principal del perfil del usuario. Permite ver y editar sus 
@@ -99,6 +101,7 @@ fun PerfilScreen(
     val state by perfilView.state.collectAsStateWithLifecycle()
 
     val auth = Firebase.auth
+    val tokenManager: TokenManager = koinInject()
 
     var isEditing by remember { mutableStateOf(false) }
     var nombreInput by remember { mutableStateOf("") }
@@ -454,6 +457,9 @@ fun PerfilScreen(
                     /* Botón llamativo en rojo para que el usuario pueda salir de su cuenta de forma segura. */
                     OutlinedButton(
                         onClick = {
+                            // Limpiamos el token del backend además de la sesión de Firebase,
+                            // para no dejar un JWT vencido guardado en el dispositivo.
+                            tokenManager.clearToken()
                             auth.signOut()
                             onLogout()
                         },
