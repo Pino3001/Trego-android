@@ -32,7 +32,10 @@ class CarritoRepository(
                 }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            if (e is kotlin.coroutines.cancellation.CancellationException) {
+                throw e // Deja que la corrutina se cancele silenciosamente
+            }
+            Result.failure(e) // Cualquier otro error sí va al onFailure
         }
     }
 

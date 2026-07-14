@@ -6,12 +6,26 @@ import com.grupo6.trego.data.model.DTODireccion
 import com.grupo6.trego.data.model.DTOPedido
 import com.grupo6.trego.data.model.DTOPreferenciaMP
 import com.grupo6.trego.data.remote.PedidoApiService
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 /**
  * Este repositorio centraliza todo lo que tiene que ver con los pedidos, desde confirmarlos
  * hasta manejar los reclamos y el historial de compras.
  */
 class PedidoRepository(private val api: PedidoApiService) {
+
+    private fun handleException(e: Exception): Exception {
+        return when (e) {
+            is UnknownHostException, is IOException ->
+                Exception("Sin conexión a internet. Verificá tu red e intentá de nuevo.")
+            is SocketTimeoutException ->
+                Exception("El servidor está tardando mucho en responder. Intentá de nuevo.")
+            else -> e
+        }
+    }
+
     suspend fun confirmarPedido(request: DTODireccion): Result<DTOPreferenciaMP> {
         return try {
             val response = api.confirmarPedido(request)
@@ -26,7 +40,7 @@ class PedidoRepository(private val api: PedidoApiService) {
             }
         } catch (e: Exception) {
             Log.e("PedidoRepo", "Excepción de red", e)
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -39,7 +53,7 @@ class PedidoRepository(private val api: PedidoApiService) {
                 Result.failure(Exception("Error al obtener pedidos: ${response.code()}"))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -52,7 +66,7 @@ class PedidoRepository(private val api: PedidoApiService) {
                 Result.failure(Exception("Error al obtener historial: ${response.code()}"))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -74,7 +88,7 @@ class PedidoRepository(private val api: PedidoApiService) {
             }
         } catch (e: Exception) {
             // Manejo de errores de red (sin internet, timeout, etc)
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -90,7 +104,7 @@ class PedidoRepository(private val api: PedidoApiService) {
                 Result.failure(Exception("Error ${response.code()}: ${response.message()}"))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 }

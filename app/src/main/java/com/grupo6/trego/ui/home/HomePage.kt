@@ -153,7 +153,11 @@ fun HomePage(navController: NavController) {
 
                                 Text(
                                     color = Color.White,
-                                    text = if (isFetchingAddress) "Buscando..." else "${currentAddress?.calle ?: "Seleccionar dirección"} ${currentAddress?.numero}",
+                                    text = if (isFetchingAddress) "Buscando..." else {
+                                        val calle = currentAddress?.calle ?: "Seleccionar dirección"
+                                        val numero = currentAddress?.numero
+                                        if (numero != null) "$calle $numero" else calle
+                                    },
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Medium,
                                 )
@@ -181,7 +185,8 @@ fun HomePage(navController: NavController) {
                     viewModel.setManualAddress(it)
                     mostrarSelectorDireccion = false
                 },
-                onDismiss = { mostrarSelectorDireccion = false }
+                onDismiss = { mostrarSelectorDireccion = false },
+                titulo = "Selecciona tu direccion"
             )
         }
         Column(

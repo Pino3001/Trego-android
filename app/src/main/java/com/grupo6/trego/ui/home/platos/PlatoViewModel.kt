@@ -16,6 +16,7 @@ sealed class PlatoUIState {
     object Idle : PlatoUIState()
     object Loading : PlatoUIState()
     object Empty : PlatoUIState()
+    object NoCoverage : PlatoUIState()
     data class Success(val platos: List<DTOProductoZona>) : PlatoUIState()
     data class Error(val message: String) : PlatoUIState()
 }
@@ -53,13 +54,14 @@ class PlatoViewModel(
             else isRefreshing = true
 
             try {
-                val result = repository.listarPlatos(subCategoria, direccion)
-                if (result != null) {
-                    allPlatos = result
-                    applyFiltersAndSort()
-                } else {
-                    uiState = PlatoUIState.Error("No se pudieron cargar los platos")
-                }
+                repository.listarPlatos(subCategoria, direccion)
+                    .onSuccess { result ->
+                        allPlatos = result
+                        applyFiltersAndSort()
+                    }
+                    .onFailure { e ->
+                        uiState = PlatoUIState.Error(e.message ?: "No se pudieron cargar los platos")
+                    }
             } catch (e: Exception) {
                 uiState = PlatoUIState.Error(e.message ?: "Error desconocido")
             } finally {
@@ -85,6 +87,11 @@ class PlatoViewModel(
 
     /* Aplica todos los filtros seleccionados (búsqueda, estrellas y orden) a la lista original de platos. */
     private fun applyFiltersAndSort() {
+        if (allPlatos.isEmpty()) {
+            uiState = PlatoUIState.NoCoverage
+            return
+        }
+
         var filteredList = allPlatos.filter { item ->
             val matchesRestaurant = item.nombreRestaurante.contains(restaurantQuery, ignoreCase = true)
             val matchesRating = item.calificacionProm >= minRating

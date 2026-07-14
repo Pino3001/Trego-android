@@ -29,7 +29,7 @@ class AuthInterceptor(
         val requestBuilder = originalRequest.newBuilder()
 
         val token = tokenManager.getToken()
-
+        android.util.Log.d("AuthInterceptor", "Token presente: ${token != null}, longitud: ${token?.length ?: 0}")
         // Inyectar token si existe
         if (!token.isNullOrEmpty()) {
             requestBuilder.addHeader("Authorization", "Bearer $token")

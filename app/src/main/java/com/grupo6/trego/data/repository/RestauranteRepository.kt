@@ -5,6 +5,9 @@ import com.grupo6.trego.data.model.DTODireccion
 import com.grupo6.trego.data.model.DTORestaurante
 import com.grupo6.trego.data.model.PageResponse
 import com.grupo6.trego.data.remote.RestaurantApiService
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 /**
  * Con este repositorio manejamos toda la información de los restaurantes, permitiéndonos
@@ -13,6 +16,16 @@ import com.grupo6.trego.data.remote.RestaurantApiService
 class RestauranteRepository(
     private val api: RestaurantApiService
 ) {
+    private fun handleException(e: Exception): Exception {
+        return when (e) {
+            is UnknownHostException, is IOException -> 
+                Exception("Sin conexión a internet. Verificá tu red e intentá de nuevo.")
+            is SocketTimeoutException -> 
+                Exception("El servidor está tardando mucho en responder. Intentá de nuevo.")
+            else -> e
+        }
+    }
+
     suspend fun getRestaurantsByZone(
         lat: Double, lon: Double, page: Int = 0, size: Int = 10
     ): Result<PageResponse<DTORestaurante>> {
@@ -21,12 +34,15 @@ class RestauranteRepository(
 
             if (response.isSuccessful) {
                 Result.success(response.body() ?: PageResponse())
+            } else if (response.code() == 404) {
+                // 404 en este contexto significa que no hay restaurantes en la zona
+                Result.success(PageResponse())
             } else {
                 val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -36,12 +52,15 @@ class RestauranteRepository(
 
             if (response.isSuccessful) {
                 Result.success(response.body() ?: emptyList())
+            } else if (response.code() == 404) {
+                // 404 en este contexto significa que no hay restaurantes en la zona
+                Result.success(emptyList())
             } else {
                 val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -55,7 +74,7 @@ class RestauranteRepository(
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -74,7 +93,7 @@ class RestauranteRepository(
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -93,7 +112,7 @@ class RestauranteRepository(
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -112,7 +131,7 @@ class RestauranteRepository(
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -132,7 +151,7 @@ class RestauranteRepository(
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -151,7 +170,7 @@ class RestauranteRepository(
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -170,7 +189,7 @@ class RestauranteRepository(
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 }

@@ -159,7 +159,8 @@ fun CarritoScreen(
             direcciones = direccionesList,
             seleccionada = viewModel.direccionSeleccionada,
             onConfirmar = { viewModel.seleccionarDireccion(it); mostrarSelectorDireccion = false },
-            onDismiss = { mostrarSelectorDireccion = false }
+            onDismiss = { mostrarSelectorDireccion = false },
+            titulo = "Direccion de entrega"
         )
     }
 

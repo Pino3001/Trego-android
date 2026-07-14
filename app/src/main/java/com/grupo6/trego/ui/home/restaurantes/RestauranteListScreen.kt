@@ -3,6 +3,7 @@ package com.grupo6.trego.ui.home.restaurantes
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +30,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.grupo6.trego.data.model.DTODireccion
 import com.grupo6.trego.data.utilities.LocationState
+import com.grupo6.trego.data.utilities.TokenManager
 import com.grupo6.trego.ui.componentes.SearchBar
 import com.grupo6.trego.ui.componentes.VistaError
 import com.grupo6.trego.ui.componentes.VistaEstado
@@ -50,6 +53,7 @@ import com.grupo6.trego.ui.home.restaurantes.componentes.RestaurantItem
 import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,31 +71,35 @@ fun RestaurantListScreen(
     // Controla si ya se realizó la carga inicial con éxito para no repetir jamás
     var isInitialLoadDone by remember { mutableStateOf(false) }
     val addressSearchState = viewModel.addressSearchUiState
+    val tokenManager: TokenManager = koinInject()
+    val tokenReady by tokenManager.isTokenAvailable.collectAsState()
 
     // Sincronizar ubicación con el ViewModel de Restaurantes (Solo reacciona a cambios manuales de dirección)
-    LaunchedEffect(currentAddress, locationState) {
-        // Si ya hicimos la carga inicial y no hay un cambio de dirección manual, ignoramos cualquier actualización del GPS
+    LaunchedEffect(currentAddress, locationState, tokenReady) {
+        if (!tokenReady) return@LaunchedEffect
+
         if (isInitialLoadDone && currentAddress == null) return@LaunchedEffect
 
-        val targetLat: Double
-        val targetLon: Double
-        val targetAddress: DTODireccion
+        val targetAddress: DTODireccion? = when {
+            currentAddress != null &&
+                    (currentAddress.latitud != 0.0 || currentAddress.longitud != 0.0) &&
+                    currentAddress.latitud in -90.0..90.0 &&
+                    currentAddress.longitud in -180.0..180.0 -> currentAddress
 
-        if (currentAddress != null) {
-            targetLat = currentAddress.latitud
-            targetLon = currentAddress.longitud
-            targetAddress = currentAddress
-        } else if (locationState is LocationState.Available) {
-            targetLat = locationState.lat
-            targetLon = locationState.lon
-            targetAddress = DTODireccion(latitud = targetLat, longitud = targetLon)
-        } else {
-            return@LaunchedEffect // Espera hasta que el GPS entregue el primer valor válido
+            locationState is LocationState.Available -> {
+                DTODireccion(
+                    latitud = locationState.lat,
+                    longitud = locationState.lon
+                )
+            }
+
+            else -> null
         }
 
-        // Se ejecuta la carga inicial o el cambio manual
+        if (targetAddress == null) return@LaunchedEffect
+
         isInitialLoadDone = true
-        viewModel.updateLocation(targetLat, targetLon)
+        viewModel.updateLocation(targetAddress.latitud, targetAddress.longitud)
         if (!viewModel.isSearchMode) {
             viewModel.searchRestaurantsByAddress(targetAddress)
         }
@@ -166,9 +174,23 @@ fun RestaurantListScreen(
                         }
                     }
                 }
+                Log.d(
+                    "RestaurantListScreen",
+                    "Antes del if(!tokenReady), tokenReady=$tokenReady, isInitialLoadDone=$isInitialLoadDone"
+                )
+                if (!tokenReady) {
+                    item {
+                        Box(
+                            Modifier.fillParentMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            LoadingPlaceholder("Iniciando sesión...")
+                        }
+                    }
+                }
 
                 // AHORA USAMOS !isInitialLoadDone en lugar de !hasLoadedData
-                if ((locationState is LocationState.Idle || locationState is LocationState.RequestingPermission) && !isInitialLoadDone) {
+                else if (!isInitialLoadDone && (locationState is LocationState.Idle || locationState is LocationState.RequestingPermission)) {
                     item {
                         Box(
                             modifier = Modifier.fillParentMaxSize(),
@@ -177,7 +199,7 @@ fun RestaurantListScreen(
                             LoadingPlaceholder("Obteniendo tu ubicación...")
                         }
                     }
-                } else if (locationState is LocationState.PermissionDenied && !isInitialLoadDone) {
+                } else if (!isInitialLoadDone && locationState is LocationState.PermissionDenied) {
                     item {
                         Box(
                             modifier = Modifier.fillParentMaxSize(),
@@ -192,14 +214,15 @@ fun RestaurantListScreen(
                                 onAccion = {
                                     context.startActivity(
                                         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                            data = Uri.fromParts("package", context.packageName, null)
+                                            data =
+                                                Uri.fromParts("package", context.packageName, null)
                                         }
                                     )
                                 }
                             )
                         }
                     }
-                } else if (locationState is LocationState.LocationUnavailable && !isInitialLoadDone) {
+                } else if (!isInitialLoadDone && locationState is LocationState.LocationUnavailable) {
                     item {
                         Box(
                             modifier = Modifier.fillParentMaxSize(),
@@ -212,7 +235,6 @@ fun RestaurantListScreen(
                                 colorIcono = Color.Gray,
                                 botonTexto = "Reintentar",
                                 onAccion = {
-                                    // Si el usuario pide reintentar explícitamente, reseteamos el control para permitir una nueva carga
                                     isInitialLoadDone = false
                                     onRetryLocation()
                                 }
@@ -283,15 +305,13 @@ fun RestaurantListScreen(
                         }
                     } else if (viewModel.isAddressSearchMode) {
                         when (val addressState = addressSearchState) {
-                            AddressSearchUiState.Loading -> {
-                                if (!isRefreshing) {
-                                    item {
-                                        Box(
-                                            modifier = Modifier.fillParentMaxSize(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            LoadingPlaceholder("Cargando restaurantes cercanos...")
-                                        }
+                            AddressSearchUiState.Loading, AddressSearchUiState.Idle -> {
+                                item {
+                                    Box(
+                                        modifier = Modifier.fillParentMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        LoadingPlaceholder("Cargando restaurantes cercanos...")
                                     }
                                 }
                             }
@@ -339,8 +359,6 @@ fun RestaurantListScreen(
                                     }
                                 }
                             }
-
-                            AddressSearchUiState.Idle -> Unit
                         }
                     } else {
                         item {
@@ -359,6 +377,7 @@ fun RestaurantListScreen(
                         }
                     }
                 }
+
             }
         }
     }

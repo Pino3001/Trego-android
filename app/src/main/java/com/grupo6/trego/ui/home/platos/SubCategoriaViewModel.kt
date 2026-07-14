@@ -37,15 +37,10 @@ class SubCategoriaViewModel(private val repository: SubcategoriaRepository) : Vi
     var isRefreshing by mutableStateOf(false)
         private set
 
-    init {
-        fetchSubcategorias()
-    }
 
     /* Trae todas las subcategorías desde el servidor y las guarda para poder filtrarlas localmente. */
     fun fetchSubcategorias() {
         viewModelScope.launch {
-            // Si ya tenemos datos, usamos el indicador de refresco (isRefreshing)
-            // Si es la primera carga (allSubcategorias está vacío), usamos el estado Cargando
             if (allSubcategorias.isEmpty()) {
                 uiState = SubCategoriaUIstate.Cargando
             } else {
@@ -54,7 +49,7 @@ class SubCategoriaViewModel(private val repository: SubcategoriaRepository) : Vi
 
             try {
                 val response = repository.listarSubcategorias()
-                allSubcategorias = response ?: emptyList()
+                allSubcategorias = response
                 aplicarFiltros()
             } catch (e: Exception) {
                 uiState = SubCategoriaUIstate.Error("Error al cargar subcategorías: ${e.message}")

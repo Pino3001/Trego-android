@@ -27,6 +27,8 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.grupo6.trego.data.model.DTOSubCategoria
+import com.grupo6.trego.data.utilities.TokenManager
 import com.grupo6.trego.ui.componentes.SearchBar
 import com.grupo6.trego.ui.componentes.VistaError
 import com.grupo6.trego.ui.componentes.VistaEstado
@@ -45,6 +48,7 @@ import com.grupo6.trego.ui.home.platos.componentes.CardSubcategoria
 import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 /**
  * Esta pantalla muestra la lista completa de subcategorías (como Hamburguesas, Pizzas, 
@@ -60,6 +64,15 @@ fun SubCategoriaListScreen(
     var showFilterSheet by remember { mutableStateOf(false) }
     val state = rememberPullToRefreshState()
     val uiState = viewModel.uiState
+    val tokenManager: TokenManager = koinInject()
+    val tokenReady by tokenManager.isTokenAvailable.collectAsState()
+
+    // Cargar subcategorías cuando el token esté listo
+    LaunchedEffect(tokenReady) {
+        if (tokenReady) {
+            viewModel.fetchSubcategorias()
+        }
+    }
 
     if (showFilterSheet) {
         CategoryFilterBottomSheet(
@@ -95,7 +108,6 @@ fun SubCategoriaListScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                /* Sección superior con la barra de búsqueda y el botón para filtrar por categorías (Comida, Bebida, etc.). */
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Row(

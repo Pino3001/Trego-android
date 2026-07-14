@@ -167,7 +167,7 @@ fun AppNavigation(
         ) {
             composable("login") {
                 FormInicio(
-                    onLoginSuccess = { /* Autogestionado por listener */ },
+                    onLoginSuccess = { carritoViewModel.recargarCarrito()},
                     onNavigateToPhone = { navController.navigate("phone_auth") },
                     viewModel = koinViewModel()
                 )

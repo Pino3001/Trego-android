@@ -15,6 +15,7 @@ sealed class OfertaUIState {
     object Idle : OfertaUIState()
     object Loading : OfertaUIState()
     object Empty : OfertaUIState()
+    object NoCoverage : OfertaUIState()
     data class Success(val platos: List<DTOProductoZona>) : OfertaUIState()
     data class Error(val message: String) : OfertaUIState()
 }
@@ -46,13 +47,14 @@ class OfertaViewModel(
             else isRefreshing = true
 
             try {
-                val result = repository.listarOfertas(direccion)
-                if (result != null) {
-                    allOfertas = result
-                    applyFiltersAndSort()
-                } else {
-                    uiState = OfertaUIState.Error("No se pudieron cargar las ofertas")
-                }
+                repository.listarOfertas(direccion)
+                    .onSuccess { result ->
+                        allOfertas = result
+                        applyFiltersAndSort()
+                    }
+                    .onFailure { e ->
+                        uiState = OfertaUIState.Error(e.message ?: "No se pudieron cargar las ofertas")
+                    }
             } catch (e: Exception) {
                 uiState = OfertaUIState.Error(e.message ?: "Error desconocido")
             } finally {
@@ -77,6 +79,11 @@ class OfertaViewModel(
     }
 
     private fun applyFiltersAndSort() {
+        if (allOfertas.isEmpty()) {
+            uiState = OfertaUIState.NoCoverage
+            return
+        }
+
         var filteredList = allOfertas.filter { item ->
             val matchesRestaurant =
                 item.nombreRestaurante.contains(restaurantQuery, ignoreCase = true)

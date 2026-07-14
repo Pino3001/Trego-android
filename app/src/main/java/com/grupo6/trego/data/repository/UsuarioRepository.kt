@@ -5,12 +5,25 @@ import com.grupo6.trego.data.model.DTODireccion
 import com.grupo6.trego.data.model.DTOUsuario
 import com.grupo6.trego.data.model.FcmTokenRequest
 import com.grupo6.trego.data.remote.UsuarioApiService
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 /**
  * Este repositorio maneja los datos personales del usuario, sus direcciones guardadas 
  * y la actualización del token para las notificaciones push.
  */
 class UsuarioRepository(private val api: UsuarioApiService) {
+
+    private fun handleException(e: Exception): Exception {
+        return when (e) {
+            is UnknownHostException, is IOException ->
+                Exception("Sin conexión a internet. Verificá tu red e intentá de nuevo.")
+            is SocketTimeoutException ->
+                Exception("El servidor está tardando mucho en responder. Intentá de nuevo.")
+            else -> e
+        }
+    }
 
     suspend fun verPerfil(): Result<DTOUsuario> {
         return try {
@@ -30,7 +43,7 @@ class UsuarioRepository(private val api: UsuarioApiService) {
             }
         } catch (e: Exception) {
             // Manejo de errores de red (sin internet, timeout, etc)
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -44,7 +57,7 @@ class UsuarioRepository(private val api: UsuarioApiService) {
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -57,7 +70,7 @@ class UsuarioRepository(private val api: UsuarioApiService) {
                 Result.failure(Exception("Error al obtener las direcciones: ${response.code()}"))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -71,7 +84,7 @@ class UsuarioRepository(private val api: UsuarioApiService) {
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -85,7 +98,7 @@ class UsuarioRepository(private val api: UsuarioApiService) {
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -101,7 +114,7 @@ class UsuarioRepository(private val api: UsuarioApiService) {
                 Result.failure(Exception("Error al enviar token FCM. Código: ${response.code()}"))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 

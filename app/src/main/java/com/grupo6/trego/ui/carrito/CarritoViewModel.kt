@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
+import java.io.IOException
 import kotlin.time.Duration.Companion.milliseconds
 
 sealed class CarritoUiState {
@@ -55,7 +57,7 @@ class CarritoViewModel(
     private val locationRepository: LocationRepository,
 ) : ViewModel() {
 
-    var uiState by mutableStateOf<CarritoUiState>(CarritoUiState.Cargando)
+    var uiState by mutableStateOf<CarritoUiState>(CarritoUiState.Vacio)
         private set
 
     private val _items = mutableStateListOf<DTOProductoPedido>()
@@ -84,7 +86,6 @@ class CarritoViewModel(
     val direccionesState: StateFlow<DireccionesState> = _direccionesState.asStateFlow()
 
     init {
-        cargarCarrito()
         observarUbicacion()
     }
 
@@ -126,9 +127,20 @@ class CarritoViewModel(
                     actualizarEstado()
                 }
                 .onFailure { e ->
-                    uiState =
-                        CarritoUiState.Error("No se pudo conectar con el servidor. Verifica tu conexión.")
-                    emitirError("Error al cargar carrito")
+                    android.util.Log.e("CarritoDebug", "Falló la petición: ${e.message}")
+                    val mensajeError = when {
+                        e is IOException -> "Sin conexión a internet. Verifica tu red."
+
+                        e.message?.contains("401") == true -> "Tu sesión ha expirado. Vuelve a iniciar sesión."
+                        e.message?.contains("500") == true || e.message?.contains("503") == true -> "El servidor está fallando. Inténtalo más tarde."
+
+                        e.message?.startsWith("Error al obtener carrito") == true -> "No pudimos cargar tu carrito en este momento."
+
+                        else -> "Ocurrió un error inesperado al cargar el carrito."
+                    }
+
+                    uiState = CarritoUiState.Error(mensajeError)
+                    emitirError(mensajeError)
                 }
         }
     }

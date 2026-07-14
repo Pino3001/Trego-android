@@ -1,7 +1,9 @@
 package com.grupo6.trego.ui.home.platos.componentes
 
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -50,12 +52,12 @@ fun CardSubcategoria(
         Column {
             // ── Imagen del plato ──────────────────────────────────────────
             AsyncImage(
-                model = subCategoria.urlImagen.ensureCloudinaryTransformation("w_200,h_200,c_fill,g_auto"),
+                model = subCategoria.urlImagen.ensureCloudinaryTransformation("w_200,h_200,c_fill,g_auto,f_jpg"),
                 contentDescription = subCategoria.nombre,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(75.dp),
-                contentScale = ContentScale.FillBounds,
+                    .aspectRatio(16f / 9f),
+                contentScale = ContentScale.Crop,
                 placeholder = ColorPainter(placeholderColor),
                 error = ColorPainter(placeholderColor),
             )

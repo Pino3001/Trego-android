@@ -1,5 +1,6 @@
 package com.grupo6.trego.ui.home.restaurantes
 
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -128,6 +129,7 @@ class RestauranteViewModel(
      * @param isForceRefresh Obliga a hacer la petición al servidor ignorando la caché de memoria
      */
     fun searchRestaurantsByAddress(direccion: DTODireccion, isForceRefresh: Boolean = false) {
+        Log.e("RestauranteViewModel", "searchRestaurantsByAddress llamada con lat=${direccion.latitud}, lon=${direccion.longitud}")
         // OPTIMIZACIÓN: Si NO es un refresh forzado, ya consultamos esta misma dirección y tenemos éxito, cortamos acá.
         if (!isForceRefresh && lastSearchedAddress == direccion && addressSearchUiState is AddressSearchUiState.Success) {
             isAddressSearchMode = true

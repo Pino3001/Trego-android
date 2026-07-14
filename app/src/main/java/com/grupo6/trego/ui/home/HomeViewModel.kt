@@ -52,7 +52,7 @@ class HomeViewModel(
 
     fun cargarDirecciones() {
         // OPTIMIZACIÓN: No recargar si ya tenemos datos, a menos que sea necesario
-        if (_direccionesState.value is HomeDireccionesState.Cargadas) return
+       // if (_direccionesState.value is HomeDireccionesState.Cargadas) return
 
         viewModelScope.launch {
             _direccionesState.value = HomeDireccionesState.Cargando

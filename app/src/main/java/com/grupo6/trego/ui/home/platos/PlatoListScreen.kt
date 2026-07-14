@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +32,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.grupo6.trego.data.model.DTODireccion
 import com.grupo6.trego.data.model.DTOSubCategoria
+import com.grupo6.trego.data.utilities.TokenManager
 import com.grupo6.trego.ui.componentes.SearchBar
 import com.grupo6.trego.ui.componentes.VistaError
 import com.grupo6.trego.ui.componentes.VistaEstado
@@ -55,6 +58,7 @@ import com.grupo6.trego.ui.menu.MenuViewModel
 import com.grupo6.trego.ui.theme.BlancoCard
 import com.grupo6.trego.ui.theme.TregoOrange
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 /**
  * Esta pantalla muestra todos los platos que pertenecen a una subcategoría específica. 
@@ -78,9 +82,13 @@ fun PlatoListScreen(
 
     val uiState = viewModel.uiState
 
-    /* Carga los platos apenas entramos a la pantalla o si cambiamos de categoría o ubicación. */
-    LaunchedEffect(subCategoria, direccion) {
-        viewModel.loadPlatos(subCategoria, direccion)
+    val tokenManager: TokenManager = koinInject()
+    val tokenReady by tokenManager.isTokenAvailable.collectAsState()
+
+    LaunchedEffect(subCategoria, direccion, tokenReady) {
+        if (tokenReady) {
+            viewModel.loadPlatos(subCategoria, direccion)
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -204,6 +212,25 @@ fun PlatoListScreen(
                                     titulo = "Sin resultados",
                                     mensaje = "No se encontraron platos que coincidan con los filtros aplicados.",
                                     icono = Icons.Default.SearchOff,
+                                    colorIcono = Color.Gray,
+                                    onAccion = null
+                                )
+                            }
+                        }
+                    }
+
+                    is PlatoUIState.NoCoverage -> {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(400.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                VistaEstado(
+                                    titulo = "Zona sin cobertura",
+                                    mensaje = "Lo sentimos, no hay restaurantes disponibles en tu zona actualmente para esta categoría.",
+                                    icono = Icons.Default.Map,
                                     colorIcono = Color.Gray,
                                     onAccion = null
                                 )

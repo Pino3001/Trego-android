@@ -7,6 +7,9 @@ import com.grupo6.trego.data.model.DTOFirma
 import com.grupo6.trego.data.remote.UsuarioApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 /**
  * Uso este repositorio para gestionar la subida de imágenes a la nube, encargándose
@@ -16,6 +19,16 @@ class CloudinaryRepository(
     private val context: Context,
     private val apiService: UsuarioApiService
 ) {
+    private fun handleException(e: Exception): Exception {
+        return when (e) {
+            is UnknownHostException, is IOException ->
+                Exception("Sin conexión a internet. Verificá tu red e intentá de nuevo.")
+            is SocketTimeoutException ->
+                Exception("El servidor está tardando mucho en responder. Intentá de nuevo.")
+            else -> e
+        }
+    }
+
     // Obtiene la firma desde el backend
     suspend fun obtenerFirma(nombreArchivo: String, tipo: String): Result<DTOFirma> {
         return try {
@@ -26,7 +39,7 @@ class CloudinaryRepository(
                 Result.failure(Exception("Error al obtener firma"))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 
@@ -57,7 +70,7 @@ class CloudinaryRepository(
             val uploadResult = cloudinary.uploader().upload(bytes, options)
             Result.success(uploadResult["secure_url"] as String)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(handleException(e))
         }
     }
 }
